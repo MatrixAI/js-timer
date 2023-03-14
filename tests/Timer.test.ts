@@ -224,4 +224,41 @@ describe(Timer.name, () => {
       await expect(timer).rejects.toBe('error');
     });
   });
+  test('refresh updates timer scheduled time', async () => {
+    const t = new Timer({ delay: 50 });
+    const scheduledTimeInitial = t.scheduled;
+    await sleep(20);
+    // Refresh should update the timer
+    t.refresh();
+    const scheduledTimeNew = t.scheduled;
+    expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
+    await t;
+    expect(
+      new Date(performance.timeOrigin + performance.now()),
+    ).toBeAfterOrEqualTo(scheduledTimeNew!);
+    // Refresh after ending shouldn't do anything
+    t.refresh();
+    expect(t.scheduled).toEqual(scheduledTimeNew);
+  });
+  test('reset updates timer scheduled time and delay', async () => {
+    const t = new Timer({ delay: 50 });
+    const scheduledTimeInitial = t.scheduled;
+    await sleep(20);
+    // Refresh should update the timer
+    t.reset(100);
+    const scheduledTimeNew = t.scheduled;
+    expect(t.delay).toEqual(100);
+    expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
+    expect(
+      scheduledTimeNew!.getTime() - scheduledTimeInitial!.getTime(),
+    ).toBeGreaterThanOrEqual(55);
+    await t;
+    expect(
+      new Date(performance.timeOrigin + performance.now()),
+    ).toBeAfterOrEqualTo(scheduledTimeNew!);
+    // Reset after ending shouldn't do anything
+    t.reset(1000);
+    expect(t.scheduled).toEqual(scheduledTimeNew);
+    expect(t.delay).toEqual(100);
+  });
 });
