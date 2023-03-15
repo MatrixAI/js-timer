@@ -1,6 +1,7 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
 import { performance } from 'perf_hooks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { ErrorTimerEnded } from '@/errors';
 
 /**
  * Just like `setTimeout` or `setInterval`,
@@ -13,7 +14,7 @@ class Timer<T = void>
    * Delay in milliseconds
    * This may be `Infinity`
    */
-  public readonly delay: number;
+  protected delay_: number;
 
   /**
    * If it is lazy, the timer will not eagerly reject
@@ -33,7 +34,7 @@ class Timer<T = void>
    * Guaranteed to be weakly monotonic within the process lifetime
    * Compare this with `performance.now()` not `Date.now()`
    */
-  public readonly scheduled?: Date;
+  protected scheduled_?: Date;
 
   /**
    * Handler to be executed
@@ -125,7 +126,7 @@ class Timer<T = void>
       }
     }
     this.handler = handler;
-    this.delay = delay;
+    this.delay_ = delay;
     this.lazy = lazy;
     let abortController: AbortController;
     if (typeof controller === 'function') {
@@ -150,7 +151,7 @@ class Timer<T = void>
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
       this.timestamp = new Date(performance.timeOrigin + performance.now());
-      this.scheduled = new Date(this.timestamp.getTime() + delay);
+      this.scheduled_ = new Date(this.timestamp.getTime() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
@@ -168,16 +169,34 @@ class Timer<T = void>
   }
 
   /**
+   * Timestamp when this is scheduled to finish and execute the handler
+   * Guaranteed to be weakly monotonic within the process lifetime
+   * Compare this with `performance.now()` not `Date.now()`
+   */
+  public get scheduled(): Date | undefined {
+    return this.scheduled_;
+  }
+
+  /**
+   * Delay in milliseconds
+   * This may be `Infinity`
+   */
+  public get delay(): number {
+    return this.delay_;
+  }
+
+  /**
    * Gets the remaining time in milliseconds
    * This will return `Infinity` if `delay` is `Infinity`
    * This will return `0` if status is `settling` or `settled`
    */
   public getTimeout(): number {
     if (this._status !== null) return 0;
-    if (this.scheduled == null) return Infinity;
+    if (this.scheduled_ == null) return Infinity;
     return Math.max(
       Math.trunc(
-        this.scheduled.getTime() - (performance.timeOrigin + performance.now()),
+        this.scheduled_.getTime() -
+          (performance.timeOrigin + performance.now()),
       ),
       0,
     );
@@ -240,6 +259,41 @@ class Timer<T = void>
     controller?: PromiseCancellableController,
   ): PromiseCancellable<T> {
     return this.p.finally(onFinally, controller);
+  }
+
+  /**
+   * Refreshes the timer to the original delay and updates the scheduled time.
+   * If the timer has already ended this does nothing.
+   */
+  public refresh(): void {
+    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    this.timeoutRef.refresh();
+    this.scheduled_ = new Date(
+      performance.timeOrigin + performance.now() + this.delay_,
+    );
+  }
+
+  /**
+   * Resets the timer with a new delay and updates the scheduled time and delay.
+   */
+  public reset(delay: number): void {
+    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    // This needs to re-create the timeout with the constructor logic.
+    clearTimeout(this.timeoutRef);
+    // If the delay is Infinity, this promise will never resolve
+    // it may still reject however
+    this.delay_ = delay;
+    if (isFinite(delay)) {
+      this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
+      this.scheduled_ = new Date(
+        performance.timeOrigin + performance.now() + delay,
+      );
+    } else {
+      // Infinite interval, make sure you are cancelling the `Timer`
+      // otherwise you will keep the process alive
+      this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
+      this.scheduled_ = undefined;
+    }
   }
 
   protected async fulfill(): Promise<void> {

@@ -1,5 +1,6 @@
 import { performance } from 'perf_hooks';
 import Timer from '@/Timer';
+import * as timerErrors from '@/errors';
 import { sleep } from './utils';
 
 describe(Timer.name, () => {
@@ -223,5 +224,45 @@ describe(Timer.name, () => {
       timer.cancel('reason');
       await expect(timer).rejects.toBe('error');
     });
+  });
+  test('Refresh updates timer scheduled time', async () => {
+    const t = new Timer({ delay: 50 });
+    const scheduledTimeInitial = t.scheduled;
+    await sleep(20);
+    // Refresh should update the timer
+    t.refresh();
+    const scheduledTimeNew = t.scheduled;
+    expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
+    await t;
+    expect(
+      new Date(performance.timeOrigin + performance.now()),
+    ).toBeAfterOrEqualTo(scheduledTimeNew!);
+  });
+  test('Refresh throws error when timer has ended', async () => {
+    const t = new Timer({ delay: 1 });
+    await t;
+    expect(() => t.refresh()).toThrowError(timerErrors.ErrorTimerEnded);
+  });
+  test('Reset updates timer scheduled time and delay', async () => {
+    const t = new Timer({ delay: 50 });
+    const scheduledTimeInitial = t.scheduled;
+    await sleep(20);
+    // Refresh should update the timer
+    t.reset(100);
+    const scheduledTimeNew = t.scheduled;
+    expect(t.delay).toEqual(100);
+    expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
+    expect(
+      scheduledTimeNew!.getTime() - scheduledTimeInitial!.getTime(),
+    ).toBeGreaterThanOrEqual(55);
+    await t;
+    expect(
+      new Date(performance.timeOrigin + performance.now()),
+    ).toBeAfterOrEqualTo(scheduledTimeNew!);
+  });
+  test('Reset throws error when timer has ended', async () => {
+    const t = new Timer({ delay: 1 });
+    await t;
+    expect(() => t.reset(100)).toThrowError(timerErrors.ErrorTimerEnded);
   });
 });
