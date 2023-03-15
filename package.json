@@ -27,7 +27,7 @@
     "docs": "rimraf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src"
   },
   "dependencies": {
-    "@matrixai/async-cancellable": "^1.0.2"
+    "@matrixai/async-cancellable": "^1.0.3"
   },
   "devDependencies": {
     "@swc/core": "^1.2.215",
