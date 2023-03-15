@@ -14,7 +14,7 @@ class Timer<T = void>
    * Delay in milliseconds
    * This may be `Infinity`
    */
-  protected delay_: number;
+  protected _delay: number;
 
   /**
    * If it is lazy, the timer will not eagerly reject
@@ -34,7 +34,7 @@ class Timer<T = void>
    * Guaranteed to be weakly monotonic within the process lifetime
    * Compare this with `performance.now()` not `Date.now()`
    */
-  protected scheduled_?: Date;
+  protected _scheduled?: Date;
 
   /**
    * Handler to be executed
@@ -126,7 +126,7 @@ class Timer<T = void>
       }
     }
     this.handler = handler;
-    this.delay_ = delay;
+    this._delay = delay;
     this.lazy = lazy;
     let abortController: AbortController;
     if (typeof controller === 'function') {
@@ -151,7 +151,7 @@ class Timer<T = void>
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
       this.timestamp = new Date(performance.timeOrigin + performance.now());
-      this.scheduled_ = new Date(this.timestamp.getTime() + delay);
+      this._scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
@@ -174,7 +174,7 @@ class Timer<T = void>
    * Compare this with `performance.now()` not `Date.now()`
    */
   public get scheduled(): Date | undefined {
-    return this.scheduled_;
+    return this._scheduled;
   }
 
   /**
@@ -182,7 +182,7 @@ class Timer<T = void>
    * This may be `Infinity`
    */
   public get delay(): number {
-    return this.delay_;
+    return this._delay;
   }
 
   /**
@@ -192,10 +192,10 @@ class Timer<T = void>
    */
   public getTimeout(): number {
     if (this._status !== null) return 0;
-    if (this.scheduled_ == null) return Infinity;
+    if (this._scheduled == null) return Infinity;
     return Math.max(
       Math.trunc(
-        this.scheduled_.getTime() -
+        this._scheduled.getTime() -
           (performance.timeOrigin + performance.now()),
       ),
       0,
@@ -268,8 +268,8 @@ class Timer<T = void>
   public refresh(): void {
     if (this.timeoutRef == null) throw new ErrorTimerEnded();
     this.timeoutRef.refresh();
-    this.scheduled_ = new Date(
-      performance.timeOrigin + performance.now() + this.delay_,
+    this._scheduled = new Date(
+      performance.timeOrigin + performance.now() + this._delay,
     );
   }
 
@@ -282,17 +282,17 @@ class Timer<T = void>
     clearTimeout(this.timeoutRef);
     // If the delay is Infinity, this promise will never resolve
     // it may still reject however
-    this.delay_ = delay;
+    this._delay = delay;
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      this.scheduled_ = new Date(
+      this._scheduled = new Date(
         performance.timeOrigin + performance.now() + delay,
       );
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
       this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
-      this.scheduled_ = undefined;
+      this._scheduled = undefined;
     }
   }
 

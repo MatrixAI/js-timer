@@ -226,16 +226,18 @@ describe(Timer.name, () => {
     });
   });
   test('Refresh updates timer scheduled time', async () => {
-    const t = new Timer({ delay: 50 });
+    const t = new Timer({ delay: 100 });
     const scheduledTimeInitial = t.scheduled;
-    await sleep(20);
+    await sleep(50);
     // Refresh should update the timer
     t.refresh();
     const scheduledTimeNew = t.scheduled;
     expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
     await t;
+    // Timer can end just before the scheduled time, this is expected.
+    //  Adding 5ms to account for this.
     expect(
-      new Date(performance.timeOrigin + performance.now()),
+      new Date(performance.timeOrigin + performance.now() + 5),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
   });
   test('Refresh throws error when timer has ended', async () => {
