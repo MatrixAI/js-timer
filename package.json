@@ -1,6 +1,6 @@
 {
   "name": "@matrixai/timer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Roger Qiu",
   "description": "Stopwatch timer object",
   "keywords": [
