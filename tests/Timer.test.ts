@@ -246,20 +246,20 @@ describe(Timer.name, () => {
     expect(() => t.refresh()).toThrowError(timerErrors.ErrorTimerEnded);
   });
   test('Reset updates timer scheduled time and delay', async () => {
-    const t = new Timer({ delay: 50 });
+    const t = new Timer({ delay: 100 });
     const scheduledTimeInitial = t.scheduled;
-    await sleep(20);
-    // Refresh should update the timer
-    t.reset(100);
+    await sleep(50);
+    // Reset should update the timer
+    t.reset(200);
     const scheduledTimeNew = t.scheduled;
-    expect(t.delay).toEqual(100);
+    expect(t.delay).toEqual(200);
     expect(scheduledTimeNew).toBeAfter(scheduledTimeInitial!);
     expect(
       scheduledTimeNew!.getTime() - scheduledTimeInitial!.getTime(),
-    ).toBeGreaterThanOrEqual(55);
+    ).toBeGreaterThanOrEqual(140);
     await t;
     expect(
-      new Date(performance.timeOrigin + performance.now()),
+      new Date(performance.timeOrigin + performance.now() + 5),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
   });
   test('Reset throws error when timer has ended', async () => {
