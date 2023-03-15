@@ -1,6 +1,7 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
 import { performance } from 'perf_hooks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { ErrorTimerEnded } from '@/errors';
 
 /**
  * Just like `setTimeout` or `setInterval`,
@@ -265,35 +266,33 @@ class Timer<T = void>
    * If the timer has already ended this does nothing.
    */
   public refresh(): void {
-    if (this.timeoutRef != null) {
-      this.timeoutRef.refresh();
-      this.scheduled_ = new Date(
-        performance.timeOrigin + performance.now() + this.delay_,
-      );
-    }
+    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    this.timeoutRef.refresh();
+    this.scheduled_ = new Date(
+      performance.timeOrigin + performance.now() + this.delay_,
+    );
   }
 
   /**
    * Resets the timer with a new delay and updates the scheduled time and delay.
    */
   public reset(delay: number): void {
-    if (this.timeoutRef) {
-      // This needs to re-create the timeout with the constructor logic.
-      clearTimeout(this.timeoutRef);
-      // If the delay is Infinity, this promise will never resolve
-      // it may still reject however
-      this.delay_ = delay;
-      if (isFinite(delay)) {
-        this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-        this.scheduled_ = new Date(
-          performance.timeOrigin + performance.now() + delay,
-        );
-      } else {
-        // Infinite interval, make sure you are cancelling the `Timer`
-        // otherwise you will keep the process alive
-        this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
-        this.scheduled_ = undefined;
-      }
+    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    // This needs to re-create the timeout with the constructor logic.
+    clearTimeout(this.timeoutRef);
+    // If the delay is Infinity, this promise will never resolve
+    // it may still reject however
+    this.delay_ = delay;
+    if (isFinite(delay)) {
+      this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
+      this.scheduled_ = new Date(
+        performance.timeOrigin + performance.now() + delay,
+      );
+    } else {
+      // Infinite interval, make sure you are cancelling the `Timer`
+      // otherwise you will keep the process alive
+      this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
+      this.scheduled_ = undefined;
     }
   }
 

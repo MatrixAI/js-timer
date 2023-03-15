@@ -1,5 +1,6 @@
 import { performance } from 'perf_hooks';
 import Timer from '@/Timer';
+import * as timerErrors from '@/errors';
 import { sleep } from './utils';
 
 describe(Timer.name, () => {
@@ -224,7 +225,7 @@ describe(Timer.name, () => {
       await expect(timer).rejects.toBe('error');
     });
   });
-  test('refresh updates timer scheduled time', async () => {
+  test('Refresh updates timer scheduled time', async () => {
     const t = new Timer({ delay: 50 });
     const scheduledTimeInitial = t.scheduled;
     await sleep(20);
@@ -236,11 +237,13 @@ describe(Timer.name, () => {
     expect(
       new Date(performance.timeOrigin + performance.now()),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
-    // Refresh after ending shouldn't do anything
-    t.refresh();
-    expect(t.scheduled).toEqual(scheduledTimeNew);
   });
-  test('reset updates timer scheduled time and delay', async () => {
+  test('Refresh throws error when timer has ended', async () => {
+    const t = new Timer({ delay: 1 });
+    await t;
+    expect(() => t.refresh()).toThrowError(timerErrors.ErrorTimerEnded);
+  });
+  test('Reset updates timer scheduled time and delay', async () => {
     const t = new Timer({ delay: 50 });
     const scheduledTimeInitial = t.scheduled;
     await sleep(20);
@@ -256,9 +259,10 @@ describe(Timer.name, () => {
     expect(
       new Date(performance.timeOrigin + performance.now()),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
-    // Reset after ending shouldn't do anything
-    t.reset(1000);
-    expect(t.scheduled).toEqual(scheduledTimeNew);
-    expect(t.delay).toEqual(100);
+  });
+  test('Reset throws error when timer has ended', async () => {
+    const t = new Timer({ delay: 1 });
+    await t;
+    expect(() => t.reset(100)).toThrowError(timerErrors.ErrorTimerEnded);
   });
 });
