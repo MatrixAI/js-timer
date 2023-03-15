@@ -88,7 +88,7 @@ describe(Timer.name, () => {
     test('cancellation rejects the timer with the reason', async () => {
       const t1 = new Timer(undefined, 100);
       t1.cancel();
-      await expect(t1).rejects.toBeUndefined();
+      await expect(t1).toReject();
       expect(t1.status).toBe('settled');
       const t2 = new Timer({ delay: 100 });
       const results = await Promise.all([
