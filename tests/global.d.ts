@@ -8,6 +8,5 @@
  */
 declare var projectDir: string;
 declare var testDir: string;
-declare var dataDir: string;
 declare var defaultTimeout: number;
 declare var maxTimeout: number;

@@ -1,7 +1,7 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
 import { performance } from 'perf_hooks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { ErrorTimerEnded } from '@/errors';
+import { ErrorTimerEnded } from './errors';
 
 /**
  * Just like `setTimeout` or `setInterval`,
