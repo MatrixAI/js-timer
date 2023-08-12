@@ -1,2 +1,2 @@
-export { default as Timer } from './Timer';
-export * as errors from './errors';
+export { default as Timer } from './Timer.js';
+export * as errors from './errors.js';

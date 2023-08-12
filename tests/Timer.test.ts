@@ -1,7 +1,7 @@
-import { performance } from 'perf_hooks';
-import Timer from '@/Timer';
-import * as timerErrors from '@/errors';
-import { sleep } from './utils';
+import { performance } from 'node:perf_hooks';
+import { sleep } from './utils.js';
+import Timer from '#Timer.js';
+import * as timerErrors from '#errors.js';
 
 describe(Timer.name, () => {
   test('timer is thenable and awaitable', async () => {
