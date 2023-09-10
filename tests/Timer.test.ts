@@ -106,6 +106,36 @@ describe(Timer.name, () => {
       expect(results[0]).toBe('Surprise!');
       expect(t2.status).toBe('settled');
     });
+    test('cancellation while status is settling will set the `signal.aborted` to true', async () => {
+      const tEager = new Timer(
+        async (signal) => {
+          expect(tEager.status).toBe('settling');
+          // This will eagerly reject `tEager`
+          tEager.cancel();
+          // This will continue running, while the signal is now aborted
+          expect(signal.aborted).toBe(true);
+          await sleep(20);
+          return 'success';
+        },
+        10,
+        false,
+      );
+      await expect(tEager).toReject();
+      const tLazy = new Timer(
+        async (signal) => {
+          expect(tLazy.status).toBe('settling');
+          // This will not eagerly reject `tLazy`
+          tLazy.cancel();
+          // This will continue running, while the signal is aborted
+          expect(signal.aborted).toBe(true);
+          await sleep(20);
+          return 'success';
+        },
+        10,
+        true,
+      );
+      await expect(tLazy).resolves.toBe('success');
+    });
     test('non-lazy cancellation is early/eager rejection', async () => {
       let resolveHandlerCalledP;
       const handlerCalledP = new Promise<void>((resolve) => {
@@ -195,6 +225,19 @@ describe(Timer.name, () => {
       timer.cancel('reason 2');
       await expect(timer).rejects.toBe('reason 1');
     });
+    test('cancellation after status is settled has no effect', async () => {
+      const tResolved = new Timer(undefined, 10);
+      await expect(tResolved).toResolve();
+      expect(tResolved.status).toBe('settled');
+      tResolved.cancel();
+      await expect(tResolved).toResolve();
+      const tRejected = new Timer(undefined, 10);
+      tRejected.cancel();
+      await expect(tRejected).toReject();
+      expect(tRejected.status).toBe('settled');
+      tRejected.cancel();
+      await expect(tRejected).toReject();
+    });
     test('lazy cancellation allows resolution if signal is ignored', async () => {
       const timer = new Timer({
         handler: (signal) => {
@@ -225,7 +268,7 @@ describe(Timer.name, () => {
       await expect(timer).rejects.toBe('error');
     });
   });
-  test('Refresh updates timer scheduled time', async () => {
+  test('refresh updates timer scheduled time', async () => {
     const t = new Timer({ delay: 100 });
     const scheduledTimeInitial = t.scheduled;
     await sleep(50);
@@ -240,12 +283,12 @@ describe(Timer.name, () => {
       new Date(performance.timeOrigin + performance.now() + 5),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
   });
-  test('Refresh throws error when timer has ended', async () => {
+  test('refresh throws error when timer has ended', async () => {
     const t = new Timer({ delay: 1 });
     await t;
     expect(() => t.refresh()).toThrowError(timerErrors.ErrorTimerEnded);
   });
-  test('Reset updates timer scheduled time and delay', async () => {
+  test('reset updates timer scheduled time and delay', async () => {
     const t = new Timer({ delay: 100 });
     const scheduledTimeInitial = t.scheduled;
     await sleep(50);
@@ -262,7 +305,7 @@ describe(Timer.name, () => {
       new Date(performance.timeOrigin + performance.now() + 5),
     ).toBeAfterOrEqualTo(scheduledTimeNew!);
   });
-  test('Reset throws error when timer has ended', async () => {
+  test('reset throws error when timer has ended', async () => {
     const t = new Timer({ delay: 1 });
     await t;
     expect(() => t.reset(100)).toThrowError(timerErrors.ErrorTimerEnded);
