@@ -403,7 +403,7 @@ in an unhandled promise rejection, all promise rejections are ignored</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L299">src/Timer.ts:299</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L297">src/Timer.ts:297</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getTimeout" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Timeout</span><a href="#getTimeout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -422,11 +422,12 @@ This will return <code>0</code> if status is <code>settling</code> or <code>sett
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="refresh.refresh-1"><span class="tsd-kind-call-signature">refresh</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span><a href="#refresh.refresh-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Refreshes the timer to the original delay and updates the scheduled time.
-If the timer has already ended this does nothing.</p>
+<div class="tsd-comment tsd-typography"><p>Refreshes the timer to the original delay and updates the scheduled time.</p>
 </div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<div class="tsd-comment tsd-typography">
+<h4>Throws</h4><p>If the timer is <code>settling</code> or <code>settled</code></p>
+</div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L268">src/Timer.ts:268</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="reject" class="tsd-anchor"></a>
@@ -441,7 +442,7 @@ If the timer has already ended this does nothing.</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">reason</span>: <span class="tsd-signature-type">any</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L316">src/Timer.ts:316</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L314">src/Timer.ts:314</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="reset" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>reset</span><a href="#reset" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -455,9 +456,11 @@ If the timer has already ended this does nothing.</p>
 <li>
 <h5><span class="tsd-kind-parameter">delay</span>: <span class="tsd-signature-type">number</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<div class="tsd-comment tsd-typography">
+<h4>Throws</h4><p>If the timer is <code>settling</code> or <code>settled</code></p>
+</div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L279">src/Timer.ts:279</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/js-timer/blob/master/src/Timer.ts#L277">src/Timer.ts:277</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="then" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>then</span><a href="#then" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
