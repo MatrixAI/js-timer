@@ -263,21 +263,19 @@ class Timer<T = void>
 
   /**
    * Refreshes the timer to the original delay and updates the scheduled time.
-   * If the timer has already ended this does nothing.
+   * @throws {ErrorTimerEnded} If the timer is `settling` or `settled`
    */
   public refresh(): void {
-    if (this.timeoutRef == null) throw new ErrorTimerEnded();
-    this.timeoutRef.refresh();
-    this._scheduled = new Date(
-      performance.timeOrigin + performance.now() + this._delay,
-    );
+    if (this._status != null) throw new ErrorTimerEnded();
+    return this.reset(this._delay);
   }
 
   /**
    * Resets the timer with a new delay and updates the scheduled time and delay.
+   * @throws {ErrorTimerEnded} If the timer is `settling` or `settled`
    */
   public reset(delay: number): void {
-    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    if (this._status != null) throw new ErrorTimerEnded();
     // This needs to re-create the timeout with the constructor logic.
     clearTimeout(this.timeoutRef);
     // If the delay is Infinity, this promise will never resolve
@@ -292,7 +290,7 @@ class Timer<T = void>
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
       this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
-      this._scheduled = undefined;
+      delete this._scheduled;
     }
   }
 
