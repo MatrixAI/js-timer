@@ -87,7 +87,11 @@ describe(Timer.name, () => {
   describe('timer cancellation', () => {
     test('cancellation rejects the timer with the reason', async () => {
       const t1 = new Timer(undefined, 100);
+      expect(t1.status).toBeNull();
       t1.cancel();
+      // This is only guaranteed if the timer is not lazy
+      // Otherwise thes status will only change later
+      expect(t1.status).toBe('settled');
       await expect(t1).toReject();
       expect(t1.status).toBe('settled');
       const t2 = new Timer({ delay: 100 });
@@ -206,9 +210,12 @@ describe(Timer.name, () => {
       });
       await handlerCalledP;
       expect(handler).toBeCalledWith(expect.any(AbortSignal));
+      expect(t.status).toBe('settling');
       t.cancel('timer abort');
+      expect(t.status).toBe('settling');
       await expect(t).rejects.toBe('handler abort during');
       await expect(p).rejects.toBe('handler abort during');
+      expect(t.status).toBe('settled');
     });
     test('cancellation should not have an unhandled promise rejection', async () => {
       const timer = new Timer();
