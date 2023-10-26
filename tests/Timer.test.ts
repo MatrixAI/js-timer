@@ -217,6 +217,27 @@ describe(Timer.name, () => {
       await expect(p).rejects.toBe('handler abort during');
       expect(t.status).toBe('settled');
     });
+    test('lazy cancellation before timeout rejects', async () => {
+      const t1 = new Timer(undefined, 40000, true);
+      t1.cancel();
+      await expect(t1).toReject();
+      expect(t1.status).toBe('settled');
+      const t2 = new Timer({ delay: 40000, lazy: true });
+      const results = await Promise.all([
+        (async () => {
+          try {
+            await t2;
+          } catch (e) {
+            return e;
+          }
+        })(),
+        (async () => {
+          t2.cancel('Surprise!');
+        })(),
+      ]);
+      expect(results[0]).toBe('Surprise!');
+      expect(t2.status).toBe('settled');
+    });
     test('cancellation should not have an unhandled promise rejection', async () => {
       const timer = new Timer();
       timer.cancel('reason');
@@ -246,8 +267,18 @@ describe(Timer.name, () => {
       await expect(tRejected).toReject();
     });
     test('lazy cancellation allows resolution if signal is ignored', async () => {
+      let resolveHandlerCalledP;
+      const handlerCalledP = new Promise<void>((resolve) => {
+        resolveHandlerCalledP = resolve;
+      });
+      let resolveWaitP;
+      const waitP = new Promise<void>((resolve) => {
+        resolveWaitP = resolve;
+      });
       const timer = new Timer({
-        handler: (signal) => {
+        handler: async (signal) => {
+          resolveHandlerCalledP();
+          await waitP;
           expect(signal.aborted).toBe(true);
           return new Promise((resolve) => {
             setTimeout(() => {
@@ -257,12 +288,24 @@ describe(Timer.name, () => {
         },
         lazy: true,
       });
+      await handlerCalledP;
       timer.cancel('reason');
+      resolveWaitP();
       expect(await timer).toBe('result');
     });
     test('lazy cancellation allows rejection if signal is ignored', async () => {
+      let resolveHandlerCalledP;
+      const handlerCalledP = new Promise<void>((resolve) => {
+        resolveHandlerCalledP = resolve;
+      });
+      let resolveWaitP;
+      const waitP = new Promise<void>((resolve) => {
+        resolveWaitP = resolve;
+      });
       const timer = new Timer({
-        handler: () => {
+        handler: async () => {
+          resolveHandlerCalledP();
+          await waitP;
           return new Promise((resolve, reject) => {
             setTimeout(() => {
               reject('error');
@@ -271,7 +314,9 @@ describe(Timer.name, () => {
         },
         lazy: true,
       });
+      await handlerCalledP;
       timer.cancel('reason');
+      resolveWaitP();
       await expect(timer).rejects.toBe('error');
     });
   });

@@ -313,7 +313,7 @@ class Timer<T = void>
 
   protected async reject(reason?: any): Promise<void> {
     if (
-      (this.lazy && (this._status == null || this._status === 'settling')) ||
+      (this.lazy && this._status === 'settling') ||
       this._status === 'settled'
     ) {
       return;
