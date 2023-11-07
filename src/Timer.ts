@@ -308,6 +308,7 @@ class Timer<T = void>
     } else {
       this.resolveP();
     }
+    delete this.handler;
     this._status = 'settled';
   }
 
@@ -322,6 +323,7 @@ class Timer<T = void>
     clearTimeout(this.timeoutRef);
     delete this.timeoutRef;
     this.rejectP(reason);
+    delete this.handler;
     this._status = 'settled';
   }
 }
