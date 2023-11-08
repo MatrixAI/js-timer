@@ -13,6 +13,15 @@ This does not use `Date.now()`, it uses `Performance` API.
 npm install --save @matrixai/timer
 ```
 
+## Usage
+
+```ts
+import { Timer } from '@matrixai/timer';
+
+const t1 = new Timer(() => 2, 10);
+const result = await t1;
+```
+
 ## Development
 
 Run `nix-shell`, and once you're inside, you can use:

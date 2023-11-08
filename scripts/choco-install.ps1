@@ -1,3 +1,5 @@
+$ErrorActionPreference = "Stop"
+
 function Save-ChocoPackage {
   param (
       $PackageName
