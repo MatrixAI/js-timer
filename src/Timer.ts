@@ -1,7 +1,9 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
+import type { TimerRef } from './types';
 import { performance } from 'perf_hooks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { ErrorTimerEnded } from './errors';
+import * as utils from './utils';
 
 /**
  * Just like `setTimeout` or `setInterval`,
@@ -62,9 +64,9 @@ class Timer<T = void>
   protected abortController: AbortController;
 
   /**
-   * Internal timeout reference
+   * Internal timeout/interval reference
    */
-  protected timeoutRef?: ReturnType<typeof setTimeout>;
+  protected timerRef?: TimerRef;
 
   /**
    * The status indicates when we have started settling or settled
@@ -149,13 +151,17 @@ class Timer<T = void>
     // If the delay is Infinity, this promise will never resolve
     // it may still reject however
     if (isFinite(delay)) {
-      this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
+      this.timerRef = utils.setTimerRef(
+        'timeout',
+        () => void this.fulfill(),
+        delay,
+      );
       this.timestamp = new Date(performance.timeOrigin + performance.now());
       this._scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
-      this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
+      this.timerRef = utils.setTimerRef('interval', () => {}, 2 ** 31 - 1);
       this.timestamp = new Date(performance.timeOrigin + performance.now());
     }
   }
@@ -266,8 +272,8 @@ class Timer<T = void>
    * If the timer has already ended this does nothing.
    */
   public refresh(): void {
-    if (this.timeoutRef == null) throw new ErrorTimerEnded();
-    this.timeoutRef.refresh();
+    if (this.timerRef == null) throw new ErrorTimerEnded();
+    utils.refreshTimerRef(this.timerRef);
     this._scheduled = new Date(
       performance.timeOrigin + performance.now() + this._delay,
     );
@@ -277,29 +283,35 @@ class Timer<T = void>
    * Resets the timer with a new delay and updates the scheduled time and delay.
    */
   public reset(delay: number): void {
-    if (this.timeoutRef == null) throw new ErrorTimerEnded();
+    if (this.timerRef == null) throw new ErrorTimerEnded();
     // This needs to re-create the timeout with the constructor logic.
-    clearTimeout(this.timeoutRef);
+    utils.clearTimerRef(this.timerRef);
     // If the delay is Infinity, this promise will never resolve
     // it may still reject however
     this._delay = delay;
     if (isFinite(delay)) {
-      this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
+      this.timerRef = utils.setTimerRef(
+        'timeout',
+        () => void this.fulfill(),
+        delay,
+      );
       this._scheduled = new Date(
         performance.timeOrigin + performance.now() + delay,
       );
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
-      this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
+      this.timerRef = utils.setTimerRef('interval', () => {}, 2 ** 31 - 1);
       this._scheduled = undefined;
     }
   }
 
   protected async fulfill(): Promise<void> {
     this._status = 'settling';
-    clearTimeout(this.timeoutRef);
-    delete this.timeoutRef;
+    if (this.timerRef != null) {
+      utils.clearTimerRef(this.timerRef);
+    }
+    delete this.timerRef;
     if (this.handler != null) {
       try {
         const result = await this.handler(this.abortController.signal);
@@ -322,8 +334,10 @@ class Timer<T = void>
       return;
     }
     this._status = 'settling';
-    clearTimeout(this.timeoutRef);
-    delete this.timeoutRef;
+    if (this.timerRef != null) {
+      utils.clearTimerRef(this.timerRef);
+    }
+    delete this.timerRef;
     this.rejectP(reason);
     delete this.handler;
     this._status = 'settled';
