@@ -14,7 +14,7 @@ jobs:
   use-library-js-staging:
     permissions:
       packages: read
-      contents: read
+      contents: write
       actions: write
       checks: write
       pull-requests: write
