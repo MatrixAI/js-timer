@@ -1,0 +1,21 @@
+name: "CI / Staging"
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  use-library-js-staging:
+    permissions:
+      packages: read
+      contents: read
+      actions: write
+      checks: write
+      pull-requests: write
+    uses: MatrixAI/.github/.github/workflows/library-js-staging.yml@feature-actions
