@@ -1,6 +1,8 @@
 # js-timer
 
-This library provides a reified `Timer` replacing the imperative `setTimeout` in JS. This is useful for keeping track of elapsed time and calculating how time is left. Think of this as a "Stopwatch".
+This library provides a reified `Timer` replacing the imperative `setTimeout` in
+JS. This is useful for keeping track of elapsed time and calculating how time is
+left. Think of this as a "Stopwatch".
 
 This does not use `Date.now()`, it uses `Performance` API.
 
