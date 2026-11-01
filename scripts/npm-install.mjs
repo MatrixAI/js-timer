@@ -117,6 +117,36 @@ async function install(root) {
 
   const patchedManifest = structuredClone(manifest);
   const patchedLock = structuredClone(lock);
+  const rewrittenEdges = [];
+  // Resolve each dependency from its own package scope. A nested copy of the
+  // same name need not select the top-level producer.
+  function selectedSource(modulePath, name) {
+    let scope = modulePath;
+    while (true) {
+      const candidate =
+        scope === '' ? `node_modules/${name}` : `${scope}/node_modules/${name}`;
+      if (lock.packages[candidate] != null) {
+        return plan.sources[candidate];
+      }
+      if (scope === '') return undefined;
+      const parent = scope.lastIndexOf('/node_modules/');
+      scope = parent < 0 ? '' : scope.slice(0, parent);
+    }
+  }
+  for (const [modulePath, module] of Object.entries(patchedLock.packages)) {
+    if (modulePath === '') continue;
+    for (const section of sections) {
+      for (const [name, spec] of Object.entries(module[section] ?? {})) {
+        if (!/^(?:git|github:)/.test(spec)) continue;
+        const source = selectedSource(modulePath, name);
+        if (source == null) continue;
+        // Only the install-time constraint changes. The locked resolution still
+        // selects the reviewed archive; no producer manifest is rewritten.
+        module[section][name] = source.locked.version;
+        rewrittenEdges.push({ modulePath, section, name, spec });
+      }
+    }
+  }
   for (const [modulePath, source] of sources) {
     const spec = `file:${source.archive}`;
     patchedLock.packages[modulePath].resolved = spec;
@@ -166,6 +196,15 @@ async function install(root) {
             )
           : [manifest, lock];
       const [nextManifest, nextLock] = current;
+      for (const { modulePath, section, name, spec } of rewrittenEdges) {
+        const module = nextLock.packages[modulePath];
+        if (
+          module?.[section]?.[name] ===
+          patchedLock.packages[modulePath][section][name]
+        ) {
+          module[section][name] = spec;
+        }
+      }
       for (const [modulePath, source] of sources) {
         if (
           isArchive(
