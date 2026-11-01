@@ -1,7 +1,9 @@
-import { performance } from 'node:perf_hooks';
+import { jest } from '@jest/globals';
 import { sleep } from './utils.js';
 import Timer from '#Timer.js';
 import * as timerErrors from '#errors.js';
+
+const performance = globalThis.performance;
 
 describe(Timer.name, () => {
   test('timer is thenable and awaitable', async () => {

@@ -1,11 +1,11 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
-import { performance } from 'node:perf_hooks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { ErrorTimerEnded } from './errors.js';
+import { timestampNow } from './clock.js';
 
 /**
- * Just like `setTimeout` or `setInterval`,
- * this will keep the NodeJS event loop alive
+ * Uses the host's native timeout and interval handles.
+ * Like native timers, a pending timer keeps the Node event loop alive.
  */
 class Timer<T = void>
   implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>>
@@ -24,15 +24,15 @@ class Timer<T = void>
 
   /**
    * Timestamp when this is constructed
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock.
+   * Generated clock readings are weakly monotonic within this module instance.
    */
   public readonly timestamp: Date;
 
   /**
    * Timestamp when this is scheduled to finish and execute the handler
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock, not a raw relative reading.
+   * Resetting with a shorter delay can move this deadline earlier.
    */
   protected _scheduled?: Date;
 
@@ -150,13 +150,13 @@ class Timer<T = void>
     // it may still reject however
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      this.timestamp = new Date(performance.timeOrigin + performance.now());
+      this.timestamp = new Date(timestampNow());
       this._scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
       this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
-      this.timestamp = new Date(performance.timeOrigin + performance.now());
+      this.timestamp = new Date(timestampNow());
     }
   }
 
@@ -170,8 +170,8 @@ class Timer<T = void>
 
   /**
    * Timestamp when this is scheduled to finish and execute the handler
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock, not a raw relative reading.
+   * Resetting with a shorter delay can move this deadline earlier.
    */
   public get scheduled(): Date | undefined {
     return this._scheduled;
@@ -193,13 +193,7 @@ class Timer<T = void>
   public getTimeout(): number {
     if (this._status !== null) return 0;
     if (this._scheduled == null) return Infinity;
-    return Math.max(
-      Math.trunc(
-        this._scheduled.getTime() -
-          (performance.timeOrigin + performance.now()),
-      ),
-      0,
-    );
+    return Math.max(Math.trunc(this._scheduled.getTime() - timestampNow()), 0);
   }
 
   /**
@@ -283,9 +277,7 @@ class Timer<T = void>
     this._delay = delay;
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      this._scheduled = new Date(
-        performance.timeOrigin + performance.now() + delay,
-      );
+      this._scheduled = new Date(timestampNow() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
