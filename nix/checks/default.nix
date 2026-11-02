@@ -29,6 +29,7 @@ let
       npmConfigHook
       ;
     nativeBuildInputs = [
+      pkgs.shellcheck
       pkgs.nixfmt
     ];
     dontNpmBuild = true;

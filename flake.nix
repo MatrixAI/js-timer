@@ -108,7 +108,6 @@
               ;
             gitignore = nixpkgs-matrixai.lib.gitignore;
           };
-          formatter = pkgs.nixfmt;
           devShells.ci = config.devShells.default;
           devenv.shells.default = { lib, ... }: {
             containers = lib.mkForce { };
@@ -121,16 +120,11 @@
             packages = [
               nodejs
               (pkgs.lib.hiPrio npm)
+              # External backends invoked through the npm lint scripts.
               pkgs.shellcheck
               pkgs.nixfmt
             ];
             env = browserEnvironment;
-            tasks = {
-              "project:install".exec = "npm ci";
-              "project:check".exec = "npm run check";
-              "project:browser".exec = "npm run test:browser";
-              "project:lintfix".exec = "npm run lintfix";
-            };
             enterShell = ''
               export PATH="${npm}/bin:$PWD/dist/bin:$PWD/node_modules/.bin:$PATH"
               npm install --no-audit --fund=false --prefer-offline || return "$?"

@@ -87,6 +87,6 @@ redundant prepack hook is removed; prepare and explicit Nix builds retain the
 existing compilation boundary. Lint uses an explicit SSH Git URI at the
 unchanged 1.0.1 tag and revision. Existing 3.0.0 tags remain immutable.
 
-The 3.0.1 patch selects released errors 3.0.1 through its SSH Git tag.
-The earlier routine and browser evidence remains historical; final dependency
+The 3.0.1 patch selects released errors 3.0.1 through its SSH Git tag. The
+earlier routine and browser evidence remains historical; final dependency
 selection is synchronized before the Git-only patch release.

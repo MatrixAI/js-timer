@@ -3,6 +3,6 @@
   "root": ".",
   "domains": {
     "eslint": { "tsconfigPaths": ["./tsconfig.json"] },
-    "markdown": { "targets": ["*.md"] }
+    "markdown": { "targets": ["*.{md,mdx}", "[!.]*/**/*.{md,mdx}"] }
   }
 }

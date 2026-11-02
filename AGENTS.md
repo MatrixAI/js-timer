@@ -34,3 +34,16 @@
 
 - Use released Git-tag runtime dependencies and their prepared archives. Browser
   checks must not disguise transitive Node dependencies with aliases.
+
+## Development environment and lint
+
+- Enter the integrated devenv environment and use npm scripts directly; no
+  devenv tasks or persistent library processes are required.
+- Provision ShellCheck and nixfmt as external MatrixAI lint backends in both the
+  development shell and lint-running checks. Add SQLFluff when SQL is maintained
+  or its backend is tested. ESLint and Prettier come from locked npm
+  dependencies.
+- Use `npm run lintfix` for development and `npm run lint` for verification,
+  including Nix formatting. Do not add a separate flake formatter entrypoint.
+- Relevant domains must not rely on user-profile tools or skip because a backend
+  is absent. Use `npm run lintfix -- --explain` to inspect domain decisions.
