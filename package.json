@@ -36,19 +36,19 @@
     "tsx": "tsx",
     "test": "node ./scripts/test.mjs",
     "typecheck": "tsc -p ./tsconfig.json",
-    "lint": "matrixai-lint --eslint-config ./eslint.config.mjs",
-    "lintfix": "matrixai-lint --fix --eslint-config ./eslint.config.mjs",
+    "lint": "matrixai-lint",
+    "lintfix": "matrixai-lint --fix",
     "check:package": "npm run build && node ./scripts/check-package.mjs",
     "test:browser": "npm run check:package -- --browser && node ./tests/browser/runtime.mjs",
-    "check": "npm run typecheck && npm test -- --runInBand && npm run lint && npm run check:package && npm run check:portable",
-    "check:portable": "node --experimental-import-meta-resolve ./scripts/check-portable.mjs"
+    "check": "npm run check:conformance && npm run lint",
+    "check:portable": "node --experimental-import-meta-resolve ./scripts/check-portable.mjs",
+    "check:conformance": "npm run typecheck && npm test -- --runInBand && npm run check:package && npm run check:portable"
   },
   "dependencies": {
     "@matrixai/async-cancellable": "^2.0.0",
     "@matrixai/errors": "git+ssh://git@github.com/MatrixAI/js-errors.git#v3.0.2"
   },
   "devDependencies": {
-    "@matrixai/lint": "git+ssh://git@github.com/MatrixAI/js-lint.git#v1.0.2",
     "@playwright/test": "1.59.1",
     "@swc/core": "1.3.82",
     "@swc/jest": "^0.2.29",

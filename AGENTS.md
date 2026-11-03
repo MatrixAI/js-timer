@@ -18,7 +18,7 @@
 - Documentation is handwritten Markdown. Do not restore TypeDoc or generated API
   documentation, add GitHub Actions, or publish/tag without approval.
 - Keep prepared npm archives verbatim: preserve the canonical manifest and
-  dependency declarations. Resolve lint producers from the lockfile-selected
+  dependency declarations. Resolve runtime producers from the lockfile-selected
   commit, validate their descriptors, and use importNpmLock's matching hook.
 - Prefer Git-backed flake refs. Review Git status and stage only exact new flake
   inputs when needed; preserve unrelated index state.
@@ -37,13 +37,18 @@
 
 ## Development environment and lint
 
-- Enter the integrated devenv environment and use npm scripts directly; no
-  devenv tasks or persistent library processes are required.
-- Provision ShellCheck and nixfmt as external MatrixAI lint backends in both the
-  development shell and lint-running checks. Add SQLFluff when SQL is maintained
-  or its backend is tested. ESLint and Prettier come from locked npm
-  dependencies.
-- Use `npm run lintfix` for development and `npm run lint` for verification,
-  including Nix formatting. Do not add a separate flake formatter entrypoint.
-- Relevant domains must not rely on user-profile tools or skip because a backend
-  is absent. Use `npm run lintfix -- --explain` to inspect domain decisions.
+- User-authorized override: obtain MatrixAI lint from the selected public
+  package set through `pkgs.matrixai-lint.withTools`, not an npm lint dependency
+  or direct js-lint flake input. Keep TypeScript as a consumer development
+  dependency.
+- Share one lint environment, including nixfmt and ShellCheck, between the
+  integrated devenv shell, `formatter`, and independent `lint.mkCheck` gate.
+- Use `npm run lintfix` for development and `npm run lint` for non-mutating
+  verification. `nix fmt` uses the same bundled CLI and formatting authority.
+  This replaces the previous local prohibition on a flake formatter entrypoint.
+- The bundled toolchain CLI owns lint configuration. Do not restore consumer
+  configuration imports from npm lint or invoke underlying formatters directly.
+- Keep runtime Git-provider archive preparation and descriptor validation
+  intact. Relevant domains must not rely on user-profile tools or silently skip
+  missing backends. Use `npm run lintfix -- --explain` to inspect domain
+  decisions.

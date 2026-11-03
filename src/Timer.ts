@@ -7,9 +7,10 @@ import { timestampNow } from './clock.js';
  * Uses the host's native timeout and interval handles.
  * Like native timers, a pending timer keeps the Node event loop alive.
  */
-class Timer<T = void>
-  implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>>
-{
+class Timer<T = void> implements Pick<
+  PromiseCancellable<T>,
+  keyof PromiseCancellable<T>
+> {
   /**
    * Delay in milliseconds
    * This may be `Infinity`

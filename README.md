@@ -88,6 +88,27 @@ V8/Cobertura coverage is produced with `npm test -- --runInBand --coverage`. Use
 verification. Documentation is handwritten at the repository root; there is no
 TypeDoc dependency, generated documentation directory, or installer test suite.
 
+### Lint and formatting
+
+MatrixAI lint comes from the selected public nixpkgs-matrixai package set, not
+an npm dependency or a direct js-lint flake input. One configured tool
+environment is shared by the development shell, flake formatter, and independent
+hermetic lint check. The bundled CLI owns configuration; TypeScript remains a
+consumer development dependency. The packaged-consumer type fixture is compiled
+independently by `npm run check:package`, not against the main lint TypeScript
+project.
+
+```sh
+nix fmt
+npm run lintfix
+npm run lint
+nix build '.#checks.x86_64-linux.lint'
+```
+
+The first two commands share the formatting authority across applicable domains,
+including TypeScript, Markdown, shell, and Nix. The last two are non-mutating
+verification; the Nix lint gate works without an activated development shell.
+
 ## Prepared package and hermetic checks
 
 ```sh
@@ -106,15 +127,16 @@ scripts verbatim.
 
 Schema-v1 package/distribution descriptors expose manifest metadata and honest
 source provenance. Errors is advertised as a selected direct runtime provider;
-lint remains a development-only prepared dependency. Both archives are selected
-from their exact locked Git revisions and validated against their descriptors.
-Other registry dependencies retain their integrity-pinned tarballs. Hermetic
-installs use importNpmLock with the matching Node installation hook.
+its archive is selected from its exact locked Git revision and validated against
+its descriptors. Lint is supplied separately by the package set. Other registry
+dependencies retain their integrity-pinned tarballs. Hermetic installs use
+importNpmLock with the matching Node installation hook.
 
 The [check layout](nix/checks/default.nix) follows the container repository:
-routine `verify` and `default` are separate from `integration-browser` and its
-`runtime` aggregate. Checks call the same npm scripts without depending on the
-active development shell. Successful outputs retain `report.json` and artifacts.
+routine `verify` and independent `lint` gates compose `default`, separate from
+`integration-browser` and its `runtime` aggregate. Checks call the same npm
+scripts without depending on the active development shell. Successful outputs
+retain `report.json` and artifacts.
 
 `npm run check:package` inspects a packed consumer reconstructed from the
 lockfile-installed runtime dependency tree; it does not test npm installation.
