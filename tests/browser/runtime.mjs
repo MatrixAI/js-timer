@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import playwrightManifest from '@playwright/test/package.json' with { type: 'json' };
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const output = path.join(root, 'tmp/integration-browser');
@@ -26,6 +27,10 @@ const server = createServer((request, response) => {
 let browser;
 const results = [];
 try {
+  if (process.env.CHECK_PLAYWRIGHT_VERSION != null) {
+    assert.equal(playwrightManifest.version, process.env.CHECK_PLAYWRIGHT_VERSION,
+      'The npm Playwright driver must match the selected Nix browser driver');
+  }
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
@@ -65,7 +70,9 @@ try {
   for (const result of results) {
     assert.equal(result.error, undefined);
     assert.equal(result.value, 7);
+    assert.equal(result.scopeValue, 'browser:11');
     assert.equal(result.resetValue, 9);
+    assert.equal(result.groupValue, '2,3');
     for (const key of [
       'infinite',
       'cancelled',
@@ -73,6 +80,9 @@ try {
       'monotonic',
       'remaining',
       'settled',
+      'deadlineExpired',
+      'waiterIsolated',
+      'actualCompleted',
     ]) {
       assert.equal(result[key], true, key);
     }
@@ -103,7 +113,7 @@ try {
           bundleInputs: 'artifacts/bundle-inputs.json',
         },
         browser: browser.version(),
-        playwright: process.env.CHECK_PLAYWRIGHT_VERSION ?? '1.59.1',
+        playwright: playwrightManifest.version,
         scope:
           'Local Chromium document and dedicated worker, packed package, no builtin aliases',
         results,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Timer, errors } from '@matrixai/timer';
+import { Timer, createTimerScope, errors } from '@matrixai/timer';
+import { createContextScope } from '@matrixai/contexts';
 import DirectTimer from '@matrixai/timer/Timer.js';
 
 assert.equal(DirectTimer, Timer);
@@ -35,3 +36,10 @@ await assert.rejects(
   Promise.resolve(pending),
   (reason) => reason === 'cancelled',
 );
+const transaction = createContextScope(async (_outer, body) => body({ transaction: 'tx' }));
+const provideTimer = createTimerScope({ delay: 0, handler: () => 7 });
+const run = transaction(provideTimer(async ({ timer, transaction, trace }) => {
+  assert.equal(timer.signal.aborted, false);
+  return `${transaction}:${trace}:${await timer}`;
+}));
+assert.equal(await run({ trace: 'packed' }), 'tx:packed:7');
