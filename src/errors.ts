@@ -8,4 +8,8 @@ class ErrorTimerEnded<T> extends ErrorTimer<T> {
   static description = 'The timer has already ended';
 }
 
-export { ErrorTimer, ErrorTimerEnded };
+class ErrorTimerDeadlineExceeded<T> extends ErrorTimer<T> {
+  static description = 'The execution deadline has expired';
+}
+
+export { ErrorTimer, ErrorTimerEnded, ErrorTimerDeadlineExceeded };

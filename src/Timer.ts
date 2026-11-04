@@ -1,38 +1,34 @@
-import type { PromiseCancellableController } from '@matrixai/async-cancellable';
-import { performance } from 'node:perf_hooks';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextScopeExit } from '@matrixai/contexts';
+import type { Cancellation } from '@matrixai/async-cancellable';
+import { createCancellation, waitForPromise } from '@matrixai/async-cancellable';
 import { ErrorTimerEnded } from './errors.js';
+import { timestampNow } from './clock.js';
 
 /**
- * Just like `setTimeout` or `setInterval`,
- * this will keep the NodeJS event loop alive
+ * Uses the host's native timeout and interval handles.
+ * Like native timers, a pending timer keeps the Node event loop alive.
  */
-class Timer<T = void>
-  implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>>
-{
+class Timer<T = void> implements PromiseLike<T> {
   /**
    * Delay in milliseconds
    * This may be `Infinity`
    */
   protected _delay: number;
 
-  /**
-   * If it is lazy, the timer will not eagerly reject
-   * on cancellation if the handler has started executing
-   */
-  public readonly lazy: boolean;
+  /** Execution cancellation request; never a claim that the handler stopped. */
+  public readonly signal: AbortSignal;
 
   /**
    * Timestamp when this is constructed
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock.
+   * Generated clock readings are weakly monotonic within this module instance.
    */
   public readonly timestamp: Date;
 
   /**
    * Timestamp when this is scheduled to finish and execute the handler
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock, not a raw relative reading.
+   * Resetting with a shorter delay can move this deadline earlier.
    */
   protected _scheduled?: Date;
 
@@ -44,12 +40,21 @@ class Timer<T = void>
   /**
    * Deconstructed promise
    */
-  protected p: PromiseCancellable<T>;
+  protected p: Promise<T>;
+
+  /**
+   * Actual execution outcome, independent of rejection/cancellation of a waiter.
+   * Always fulfills with an immutable outcome after the handler has finished,
+   * or after pending scheduling has been cancelled without starting a handler.
+   */
+  public readonly completion: Promise<ContextScopeExit<T>>;
+
+  protected resolveCompletion: (exit: ContextScopeExit<T>) => void;
 
   /**
    * Resolve deconstructed promise
    */
-  protected resolveP: (value?: T) => void;
+  protected resolveP: (value: T | PromiseLike<T>) => void;
 
   /**
    * Reject deconstructed promise
@@ -59,7 +64,7 @@ class Timer<T = void>
   /**
    * Abort controller allows immediate cancellation
    */
-  protected abortController: AbortController;
+  protected cancellation: Cancellation;
 
   /**
    * Internal timeout reference
@@ -72,24 +77,18 @@ class Timer<T = void>
   protected _status: 'settling' | 'settled' | null = null;
 
   /**
-   * Construct a Timer
-   * By default `lazy` is false, which means it will eagerly reject
-   * the timer, even if the handler has already started executing
-   * If `lazy` is true, this will make the timer wait for the handler
-   * to finish executing
-   * Note that passing a custom controller does not stop the default behaviour
+   * Construct a timer with provider-owned cancellation and native completion.
+   * Cancellation before execution prevents entry. During execution it requests
+   * cooperation; awaiting the timer still observes the actual handler result.
+   * Use wait(signal) when only the caller's wait should be abortable.
    */
   constructor(
     handler?: (signal: AbortSignal) => T | PromiseLike<T>,
     delay?: number,
-    lazy?: boolean,
-    controller?: PromiseCancellableController,
   );
   constructor(opts?: {
     handler?: (signal: AbortSignal) => T | PromiseLike<T>;
     delay?: number;
-    lazy?: boolean;
-    controller?: PromiseCancellableController;
   });
   constructor(
     handlerOrOpts?:
@@ -97,12 +96,8 @@ class Timer<T = void>
       | {
           handler?: (signal: AbortSignal) => T | PromiseLike<T>;
           delay?: number;
-          lazy?: boolean;
-          controller?: PromiseCancellableController;
         },
     delay: number = 0,
-    lazy: boolean = false,
-    controller?: PromiseCancellableController,
   ) {
     let handler: ((signal: AbortSignal) => T | PromiseLike<T>) | undefined;
     if (typeof handlerOrOpts === 'function') {
@@ -110,53 +105,35 @@ class Timer<T = void>
     } else if (typeof handlerOrOpts === 'object' && handlerOrOpts !== null) {
       handler = handlerOrOpts.handler;
       delay = handlerOrOpts.delay ?? delay;
-      lazy = handlerOrOpts.lazy ?? lazy;
-      controller = handlerOrOpts.controller ?? controller;
     }
-    // Coerce NaN to minimal delay of 0
-    if (isNaN(delay)) {
-      delay = 0;
-    } else {
-      // Clip to delay >= 0
-      delay = Math.max(delay, 0);
-      if (isFinite(delay)) {
-        // Clip to delay <= 2147483647 (maximum timeout)
-        // but only if delay is finite
-        delay = Math.min(delay, 2 ** 31 - 1);
-      }
-    }
+    delay = normalizeDelay(delay);
     this.handler = handler;
     this._delay = delay;
-    this.lazy = lazy;
-    let abortController: AbortController;
-    if (typeof controller === 'function') {
-      abortController = new AbortController();
-      controller(abortController.signal);
-    } else if (controller != null) {
-      abortController = controller;
-    } else {
-      abortController = new AbortController();
-      abortController.signal.addEventListener(
-        'abort',
-        () => void this.reject(abortController.signal.reason),
-      );
-    }
-    this.p = new PromiseCancellable<T>((resolve, reject) => {
-      this.resolveP = resolve.bind(this.p);
-      this.rejectP = reject.bind(this.p);
-    }, abortController);
-    this.abortController = abortController;
+    this.completion = new Promise((resolve) => {
+      this.resolveCompletion = resolve;
+    });
+    const cancellation = createCancellation();
+    this.p = new Promise<T>((resolve, reject) => {
+      this.resolveP = resolve;
+      this.rejectP = reject;
+    });
+    // Owners may observe only completion; retain rejection without an unhandled
+    // result channel while leaving then/catch/wait rejection behavior intact.
+    void this.p.catch(() => {});
+    this.cancellation = cancellation;
+    this.signal = cancellation.signal;
+    this.signal.addEventListener('abort', () => void this.reject(this.signal.reason), { once: true });
     // If the delay is Infinity, this promise will never resolve
     // it may still reject however
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      this.timestamp = new Date(performance.timeOrigin + performance.now());
+      this.timestamp = new Date(timestampNow());
       this._scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
       this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
-      this.timestamp = new Date(performance.timeOrigin + performance.now());
+      this.timestamp = new Date(timestampNow());
     }
   }
 
@@ -170,11 +147,11 @@ class Timer<T = void>
 
   /**
    * Timestamp when this is scheduled to finish and execute the handler
-   * Guaranteed to be weakly monotonic within the process lifetime
-   * Compare this with `performance.now()` not `Date.now()`
+   * Epoch milliseconds from the portable clock, not a raw relative reading.
+   * Resetting with a shorter delay can move this deadline earlier.
    */
   public get scheduled(): Date | undefined {
-    return this._scheduled;
+    return this._scheduled == null ? undefined : new Date(this._scheduled.getTime());
   }
 
   /**
@@ -193,13 +170,7 @@ class Timer<T = void>
   public getTimeout(): number {
     if (this._status !== null) return 0;
     if (this._scheduled == null) return Infinity;
-    return Math.max(
-      Math.trunc(
-        this._scheduled.getTime() -
-          (performance.timeOrigin + performance.now()),
-      ),
-      0,
-    );
+    return Math.max(Math.trunc(this._scheduled.getTime() - timestampNow()), 0);
   }
 
   /**
@@ -222,43 +193,46 @@ class Timer<T = void>
 
   /**
    * Cancels the timer
-   * Unlike `PromiseCancellable`, canceling the timer will not result
-   * in an unhandled promise rejection, all promise rejections are ignored
+   * Pending scheduling is cancelled. A running handler receives a request and
+   * retains ownership until it completes. This method does not await it.
    */
   public cancel(reason?: any): void {
+    if (this._status === 'settled') return;
     void this.p.catch(() => {});
-    this.p.cancel(reason);
+    this.cancellation.cancel(reason);
+  }
+
+  /** Borrow a signal to abandon only this wait, without cancelling execution. */
+  public wait(signal?: AbortSignal): Promise<T> {
+    return waitForPromise(this.p, signal);
   }
 
   public then<TResult1 = T, TResult2 = never>(
     onFulfilled?:
-      | ((value: T, signal: AbortSignal) => TResult1 | PromiseLike<TResult1>)
+      | ((value: T) => TResult1 | PromiseLike<TResult1>)
       | undefined
       | null,
     onRejected?:
-      | ((reason: any, signal: AbortSignal) => TResult2 | PromiseLike<TResult2>)
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
       | undefined
       | null,
-    controller?: PromiseCancellableController,
-  ): PromiseCancellable<TResult1 | TResult2> {
-    return this.p.then(onFulfilled, onRejected, controller);
+  ): Promise<TResult1 | TResult2> {
+    return this.p.then(onFulfilled, onRejected);
   }
 
   public catch<TResult = never>(
     onRejected?:
-      | ((reason: any, signal: AbortSignal) => TResult | PromiseLike<TResult>)
+      | ((reason: any) => TResult | PromiseLike<TResult>)
       | undefined
       | null,
-    controller?: PromiseCancellableController,
-  ): PromiseCancellable<T | TResult> {
-    return this.p.catch(onRejected, controller);
+  ): Promise<T | TResult> {
+    return this.p.catch(onRejected);
   }
 
   public finally(
-    onFinally?: ((signal: AbortSignal) => void) | undefined | null,
-    controller?: PromiseCancellableController,
-  ): PromiseCancellable<T> {
-    return this.p.finally(onFinally, controller);
+    onFinally?: (() => void) | undefined | null,
+  ): Promise<T> {
+    return this.p.finally(onFinally);
   }
 
   /**
@@ -276,6 +250,7 @@ class Timer<T = void>
    */
   public reset(delay: number): void {
     if (this._status != null) throw new ErrorTimerEnded();
+    delay = normalizeDelay(delay);
     // This needs to re-create the timeout with the constructor logic.
     clearTimeout(this.timeoutRef);
     // If the delay is Infinity, this promise will never resolve
@@ -283,9 +258,7 @@ class Timer<T = void>
     this._delay = delay;
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      this._scheduled = new Date(
-        performance.timeOrigin + performance.now() + delay,
-      );
+      this._scheduled = new Date(timestampNow() + delay);
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
@@ -295,37 +268,50 @@ class Timer<T = void>
   }
 
   protected async fulfill(): Promise<void> {
+    if (this._status !== null) return;
     this._status = 'settling';
     clearTimeout(this.timeoutRef);
     delete this.timeoutRef;
+    let exit: ContextScopeExit<T>;
     if (this.handler != null) {
       try {
-        const result = await this.handler(this.abortController.signal);
+        const result = await this.handler(this.signal);
         this.resolveP(result);
+        exit = Object.freeze({ status: 'fulfilled', value: result });
       } catch (e) {
         this.rejectP(e);
+        exit = Object.freeze({ status: 'rejected', reason: e });
       }
     } else {
-      this.resolveP();
+      this.resolveP(undefined as T);
+      exit = Object.freeze({ status: 'fulfilled', value: undefined as T });
     }
     delete this.handler;
+    this.cancellation.close();
     this._status = 'settled';
+    this.resolveCompletion(exit);
   }
 
   protected async reject(reason?: any): Promise<void> {
-    if (
-      (this.lazy && this._status === 'settling') ||
-      this._status === 'settled'
-    ) {
+    if (this._status === 'settled') return;
+    if (this._status === 'settling') {
+      // Cancellation requests are not completion. Only the handler's actual
+      // outcome may settle execution; an abortable wait is a separate facade.
       return;
     }
-    this._status = 'settling';
     clearTimeout(this.timeoutRef);
     delete this.timeoutRef;
     this.rejectP(reason);
     delete this.handler;
+    this.cancellation.close();
     this._status = 'settled';
+    this.resolveCompletion(Object.freeze({ status: 'rejected', reason }));
   }
+}
+
+function normalizeDelay(delay: number): number {
+  if (Number.isNaN(delay)) return 0;
+  return delay === Infinity ? Infinity : Math.min(Math.max(delay, 0), 2 ** 31 - 1);
 }
 
 export default Timer;

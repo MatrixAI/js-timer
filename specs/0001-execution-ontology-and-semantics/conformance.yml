@@ -1,0 +1,110 @@
+schemaVersion: 1
+semanticEdition: execution-semantics-1
+decisionStatus: proposed
+requirementSatisfaction: not-established
+evidenceScope: bounded-unreleased-provider-integration
+verification:
+  sourceKind: dirty-candidate-snapshot
+  runtimeSuites: 5
+  runtimeTests: 42
+  nativeConformance: passed
+  packedDeclarations: passed
+  portableImports: passed
+  browserDocument: passed
+  browserDedicatedWorker: passed
+  browserVersion: 156.0.8078.4
+  playwrightVersion: 1.64.1
+  packedLifecycleWitnesses: passed
+  cancellationRevision: ba236dac5bc2d3487abaa2b6dc5c04cfe5d1c117
+  cancellationArchiveSha256: 0bc9ce223b63b8399600994b1b727c40921c91826dc34884eb1fb25b6e396be8
+  timerArchiveSha256: eaabc459b11ed6bfd614187813fc24721defba9d187b40426090d86c15beb7ca
+  lifecycleArchiveSha256: bdcc0b4a2fd515e1c40fa6da077f3588f72a3e40975df5870abbc7ccfbcc8f90
+  localReport: ../../tmp/cancellation-candidate-c8KndN/candidate-report.json
+  browserReport: ../../tmp/cancellation-candidate-c8KndN/tmp/integration-browser/report.json
+  canonicalTimerNixLane: dependency-selection-gated
+  lint: not-run-owner-paused
+  release: not-authorized
+  notes:
+    - Reports identify local retained artifacts, not released dependency coordinates.
+    - This receipt describes the candidate snapshot before this receipt was attached.
+limitations:
+  - The canonical manifest and lock do not yet select the unreleased cancellation API.
+  - The candidate lane substitutes an archive in a temporary consumer; it is not canonical installation evidence.
+  - Normal Git-backed timer archive and verification gates remain blocked on deliberate dependency selection.
+  - Packed lifecycle witnesses retain real lock-backed admission; migration of the legacy lock implementation itself is not established.
+  - No performance improvement or full requirement satisfaction is claimed.
+records:
+  - id: REQ-TIMER-EXECUTION-001
+    spec: adr.md#REQ-TIMER-EXECUTION-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-PENDING
+      - CASE-TIMER-RUNNING
+      - CASE-TIMER-COOPERATION
+      - CASE-TIMER-COMPLETION-WAIT
+      - CASE-TIMER-COMPLETION-PENDING
+    sources:
+      - ../../tests/Timer.test.ts
+      - ../../tests/completion.test.ts
+  - id: REQ-TIMER-CONSTRAINTS-001
+    spec: adr.md#REQ-TIMER-CONSTRAINTS-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-DEADLINE-LAWS
+      - CASE-TIMER-DEADLINE-CAPTURE
+      - CASE-TIMER-DEADLINE-WAKEUP
+      - CASE-TIMER-TIMEOUT-ORDER
+    sources:
+      - ../../tests/deadline.test.ts
+      - ../../tests/fixtures/package/types.ts
+  - id: REQ-TIMER-OWNERSHIP-001
+    spec: adr.md#REQ-TIMER-OWNERSHIP-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-CONTEXT-DRAIN
+      - CASE-TIMER-CONTEXT-FAILURES
+      - CASE-TIMER-CONTEXT-UNOBSERVED
+      - CASE-TIMER-DEADLINE-PARENT
+      - CASE-TIMER-DEADLINE-CLEANUP
+      - CASE-TIMER-DEADLINE-SETUP-SUPPRESSION
+      - CASE-TIMER-DEADLINE-MONITOR-SUPPRESSION
+    sources:
+      - ../../tests/context.test.ts
+      - ../../tests/deadline.test.ts
+  - id: REQ-TIMER-COMPOSITION-001
+    spec: adr.md#REQ-TIMER-COMPOSITION-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-CONTEXT-COMPOSE
+      - CASE-TIMER-TIMEOUT-ORDER
+      - CASE-PROVIDERS-LIFECYCLE-DRAIN
+      - CASE-PROVIDERS-LIFECYCLE-RACE
+      - CASE-PROVIDERS-LIFECYCLE-STOP
+    sources:
+      - ../../tests/context.test.ts
+      - ../../tests/deadline.test.ts
+      - ../../tests/fixtures/browser/runtime.mjs
+      - ../../tests/fixtures/providers/lifecycle.mjs
+    limitations:
+      - Service stop waits for represented timer cleanup; every shutdown and lock-wait cancellation policy is not established.
+  - id: REQ-EXEC-COMPLETION-001
+    spec: adr.md#REQ-EXEC-COMPLETION-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-CONTEXT-DRAIN
+      - CASE-TIMER-DEADLINE-DRAIN
+      - CASE-TIMER-COMPLETION-WAIT
+    sources:
+      - ../../tests/context.test.ts
+      - ../../tests/deadline.test.ts
+      - ../../tests/completion.test.ts
+  - id: REQ-EXEC-FAILURES-001
+    spec: adr.md#REQ-EXEC-FAILURES-001
+    evidenceStatus: partial
+    cases:
+      - CASE-TIMER-CONTEXT-FAILURES
+      - CASE-TIMER-DEADLINE-SETUP-SUPPRESSION
+      - CASE-TIMER-DEADLINE-MONITOR-SUPPRESSION
+    sources:
+      - ../../tests/context.test.ts
+      - ../../tests/deadline.test.ts
