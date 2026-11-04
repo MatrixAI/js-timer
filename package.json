@@ -1,6 +1,6 @@
 {
   "name": "@matrixai/timer",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "author": "Roger Qiu",
   "description": "Stopwatch timer object",
   "keywords": [
@@ -46,6 +46,7 @@
     "check:conformance": "npm run typecheck && npm test -- --runInBand && npm run check:package && npm run check:portable"
   },
   "dependencies": {
+    "@matrixai/async-cancellable": "git+ssh://git@github.com/MatrixAI/js-async-cancellable.git#v3.0.0",
     "@matrixai/contexts": "git+ssh://git@github.com/MatrixAI/js-contexts.git#v3.0.0",
     "@matrixai/errors": "git+ssh://git@github.com/MatrixAI/js-errors.git#v3.0.2"
   },

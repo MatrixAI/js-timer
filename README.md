@@ -3,41 +3,18 @@
 An awaitable stopwatch/timer with cancellation, handler execution,
 reset/refresh, and remaining-time inspection.
 
-## Candidate status
+## Version 4 compatibility
 
-This checkout contains an unreleased breaking implementation. Its cancellation
-provider is also unreleased; the canonical manifest and lock do not yet select
-that new API. Ordinary installation/build and normal Nix producer checks are
-not yet a supported way to consume this checkout. Do not substitute it under
-existing lock-dependent consumers. Existing release tags remain unchanged.
+Version 4 separates execution completion from cancellable waiting and adopts
+released contexts v3.0.0 and async-cancellable v3.0.0. Consumers of version 3's
+lazy/eager and injected-controller APIs must migrate deliberately; changing
+their dependency alone is not sufficient. Existing tags retain their original API.
 
-The explicit `check:candidate` lane accepts a prepared cancellation archive and
-creates an isolated temporary consumer, including a generated dependency edge.
-It leaves this checkout's manifest, lock, and installed dependencies unchanged.
-Its results prove only that candidate combination, not canonical lock selection
-or a released package. The generated archive is a test artifact, not a release.
-
-Run `npm run check:candidate -- /absolute/cancellation.tgz --browser` for native,
-packed declaration, portable-import, Chromium document, and dedicated-worker
-checks. Add `--lifecycle-root /absolute/async-init-checkout` after that checkout's
-packed-package check to exercise real lifecycle admission with timer cleanup,
-owned race losers, and service stop ordering. The fixture reconstructs the lifecycle package's own
-locked runtime closure beneath that package; it does not force its legacy locks
-to resolve the new cancellation API. No source manifests or locks are rewritten.
-
-## Released package installation
-
-The existing release remains available with its legacy API:
+## Installation and usage
 
 ```sh
-npm install --save 'git+ssh://git@github.com/MatrixAI/js-timer.git#v3.0.0'
+npm install --save 'git+ssh://git@github.com/MatrixAI/js-timer.git#v4.0.0'
 ```
-
-## Candidate usage
-
-The following examples describe this unreleased candidate, not the existing
-release. Use the candidate check lane above until canonical dependency selection
-and a new release are complete.
 
 ```ts
 import { Timer } from '@matrixai/timer';
@@ -69,9 +46,9 @@ Use explicit execution cancellation or waiter cancellation instead. Attaching a
 signal listener does not silently select policy. No performance improvement is
 claimed by this redesign.
 
-## Composable timer ownership (unreleased candidate)
+## Composable timer ownership
 
-The unreleased timer candidate adds a direct dependency on contexts 3.0.0.
+Timer uses the canonical contexts 3.0.0 scope contract.
 Applications compose the provider-owned scope rather than implement timer
 ownership repeatedly:
 
@@ -149,22 +126,30 @@ the timer's control. Pending timers keep the Node event loop alive like native
 timers. Remaining time becomes zero once settling begins, even if a handler has
 not completed.
 
-### Dependency and candidate boundary
+### Released dependency boundary
 
 The errors dependency remains selected by its released Git tag over SSH. The
 contexts dependency selects the private Git-only `v3.0.0` release; the npm lock
-pins its exact commit `dc958bdffdd535cd347d9fe6f800d91177ede341`. Authorized SSH
-access is required for acquisition. The old npm-registry contexts release does
-not supply this API. Timer adoption remains unreleased: its version has not been
-bumped and no timer tag, push, or publication is implied.
+pins its exact commit `dc958bdffdd535cd347d9fe6f800d91177ede341`. Cancellation
+selects its Git-only `v3.0.0` release at
+`8566e758e19d18fbd729af28f21a770768d5dcdc`. Authorized SSH access is required
+for acquisition. Older npm-registry releases do not supply these APIs.
 
-Both selections use the existing async-init consumer pattern: the npm lock owns
+These selections use the existing async-init consumer pattern: the npm lock owns
 the exact revision, the Nix source loader selects its prepared archive and
 validates the producer descriptors, and native/sandbox installation uses that
 archive without rewriting the packed manifest. There is no direct contexts
 flake input, second pin, local source override, or extra package lock. Credentials
 are not embedded in URLs or archives, and private artifacts must not be uploaded
 to a public binary cache without separate authority.
+
+For explicit local provider experiments, `npm run check:candidate --
+/absolute/cancellation.tgz --browser` creates an isolated consumer with a
+generated dependency edge. Add `--lifecycle-root /absolute/async-init-checkout`
+after that checkout's packed-package check to exercise admission, race losers,
+timer cleanup, and service stop ordering. This optional lane preserves the
+lifecycle package's own locked dependency scopes. It is not the canonical
+dependency-selection or release gate, and its generated archive is not a release.
 
 ## Development
 
@@ -232,7 +217,7 @@ Source and packed manifests preserve dependency declarations and lifecycle
 scripts verbatim.
 
 Schema-v1 package/distribution descriptors expose manifest metadata and honest
-source provenance. Contexts and errors are advertised as selected direct runtime
+source provenance. Cancellation, contexts, and errors are advertised as selected direct runtime
 providers. Contexts has an empty runtime dependency set; its test dependencies
 do not become timer dependencies. Timer remains both a consumer of prepared
 archives and a producer of its own archive, with no bundled dependency tree.

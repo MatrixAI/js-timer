@@ -37,6 +37,7 @@
           npmSources = import ./nix/npm-sources.nix {
             inherit system packageLock;
             selections = {
+              "node_modules/@matrixai/async-cancellable".name = "@matrixai/async-cancellable";
               "node_modules/@matrixai/contexts".name = "@matrixai/contexts";
               "node_modules/@matrixai/errors".name = "@matrixai/errors";
             };
