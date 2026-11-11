@@ -49,7 +49,7 @@ let
         "kind": "conformance",
         "status": "passed",
         "system": "${system}",
-        "summary": "Types, Jest/SWC unit tests, emitted package, and portable timer source boundary passed",
+        "summary": "Types, Vitest unit tests, emitted package, and portable timer source boundary passed",
         "artifacts": {
           "junit": "artifacts/junit",
           "package": "artifacts/package/report.json",

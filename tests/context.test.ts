@@ -1,15 +1,44 @@
 import type { ContextOperation } from '@matrixai/contexts';
 import type { TimerContext } from '#context.js';
+import type { Timer } from '#index.js';
+import { describe, expect, test } from 'vitest';
 import { bracketResource, createContextScope } from '@matrixai/contexts';
-import { createTimerScope, Timer } from '#index.js';
+import { createTimerScope } from '#index.js';
 
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolve_) => { resolve = resolve_; });
+  const promise = new Promise<T>((resolve_) => {
+    resolve = resolve_;
+  });
   return { promise, resolve };
 }
 
 describe('provider-owned context scope', () => {
+  test('CASE-TIMER-CONTEXT-UPSTREAM: a scope borrows its parent signal until handler completion', async () => {
+    const parent = new AbortController();
+    const started = deferred();
+    const finish = deferred();
+    let child!: AbortSignal;
+    const provide = createTimerScope({
+      delay: 0,
+      handler: async (signal) => {
+        child = signal;
+        started.resolve();
+        await finish.promise;
+        return 9;
+      },
+    });
+    const work = provide(async ({ timer }) => await timer);
+    const completion = work({ signal: parent.signal });
+    await started.promise;
+    const reason = { requested: true };
+    parent.abort(reason);
+    expect(child.reason).toBe(reason);
+    finish.resolve();
+    await expect(completion).resolves.toBe(9);
+    expect(parent.signal.reason).toBe(reason);
+  });
+
   test('CASE-TIMER-CONTEXT-COMPOSE: direct composition preserves requirements and isolates overlapping ownership', async () => {
     const bothEntered = deferred();
     const finish = deferred();
@@ -17,14 +46,21 @@ describe('provider-owned context scope', () => {
     const events: Array<string> = [];
     const provide = createTimerScope({ delay: Infinity });
     const transaction = createContextScope<object, { transaction: string }>(
-      async (_outer, body) => bracketResource(
-        () => { events.push('acquire'); return 'transaction'; },
-        (value) => body({ transaction: value }),
-        () => { events.push('release'); },
-      ),
+      async (_outer, body) =>
+        bracketResource(
+          () => {
+            events.push('acquire');
+            return 'transaction';
+          },
+          (value) => body({ transaction: value }),
+          () => {
+            events.push('release');
+          },
+        ),
     );
     const body: ContextOperation<
-      TimerContext & { transaction: string; trace: string }, string
+      TimerContext & { transaction: string; trace: string },
+      string
     > = async ({ timer, transaction, trace }) => {
       seen.push(timer);
       expect(timer.signal.aborted).toBe(false);
@@ -33,7 +69,9 @@ describe('provider-owned context scope', () => {
       expect(timer.status).toBeNull();
       return `${transaction}:${trace}`;
     };
-    const operation: ContextOperation<{ trace: string }, string> = transaction(provide(body));
+    const operation: ContextOperation<{ trace: string }, string> = transaction(
+      provide(body),
+    );
     expect(seen).toHaveLength(0);
     expect(events).toEqual([]);
     const a = operation({ trace: 'a' });
@@ -42,7 +80,10 @@ describe('provider-owned context scope', () => {
     expect(seen[0]).not.toBe(seen[1]);
     expect(events).toEqual(['acquire', 'acquire']);
     finish.resolve();
-    await expect(Promise.all([a, b])).resolves.toEqual(['transaction:a', 'transaction:b']);
+    await expect(Promise.all([a, b])).resolves.toEqual([
+      'transaction:a',
+      'transaction:b',
+    ]);
     expect(seen.map((timer) => timer.status)).toEqual(['settled', 'settled']);
     expect(events).toEqual(['acquire', 'acquire', 'release', 'release']);
   });
@@ -50,7 +91,9 @@ describe('provider-owned context scope', () => {
   test('CASE-TIMER-CONTEXT-PENDING: release cancels unused scheduling and preserves arbitrary body rejection', async () => {
     const reason = { body: 'failed' };
     let owned!: Timer<void>;
-    const operation = createTimerScope({ delay: Infinity })(async ({ timer }) => {
+    const operation = createTimerScope({ delay: Infinity })(async ({
+      timer,
+    }) => {
       owned = timer;
       throw reason;
     });
@@ -68,10 +111,14 @@ describe('provider-owned context scope', () => {
       delay: 0,
       handler: async (signal) => {
         events.push('handler');
-        signal.addEventListener('abort', () => {
-          events.push('abort');
-          cancelled.resolve();
-        }, { once: true });
+        signal.addEventListener(
+          'abort',
+          () => {
+            events.push('abort');
+            cancelled.resolve();
+          },
+          { once: true },
+        );
         started.resolve();
         await finish.promise;
         events.push('handler-complete');
@@ -86,17 +133,30 @@ describe('provider-owned context scope', () => {
     });
     let settled = false;
     const completion = bracketResource(
-      () => { events.push('acquire'); return {}; },
+      () => {
+        events.push('acquire');
+        return {};
+      },
       () => run({}),
-      () => { events.push('release'); },
-    ).then((value) => { settled = true; return value; });
+      () => {
+        events.push('release');
+      },
+    ).then((value) => {
+      settled = true;
+      return value;
+    });
     await cancelled.promise;
     expect(settled).toBe(false);
     expect(events).not.toContain('release');
     finish.resolve();
     await expect(completion).resolves.toBe(42);
     expect(events).toEqual([
-      'acquire', 'handler', 'abort', 'body-complete', 'handler-complete', 'release',
+      'acquire',
+      'handler',
+      'abort',
+      'body-complete',
+      'handler-complete',
+      'release',
     ]);
   });
 
@@ -119,14 +179,45 @@ describe('provider-owned context scope', () => {
       throw bodyFailure;
     })({});
     await expect(completion).rejects.toMatchObject({
-      name: 'SuppressedError', error: handlerFailure, suppressed: bodyFailure,
+      name: 'SuppressedError',
+      error: handlerFailure,
+      suppressed: bodyFailure,
     });
   });
 
-  test('CASE-TIMER-CONTEXT-OBSERVED: awaiting a failed handler preserves that exact failure once', async () => {
+  test('CASE-TIMER-CONTEXT-OBSERVED: ambiguous propagation retains both failure roles', async () => {
     const reason = { handler: 'failed' };
-    const provide = createTimerScope({ delay: 0, handler: () => { throw reason; } });
-    await expect(provide(async ({ timer }) => await timer)({})).rejects.toBe(reason);
+    const provide = createTimerScope({
+      delay: 0,
+      handler: () => {
+        throw reason;
+      },
+    });
+    await expect(
+      provide(async ({ timer }) => await timer)({}),
+    ).rejects.toMatchObject({
+      error: reason,
+      suppressed: reason,
+    });
+  });
+
+  test('CASE-TIMER-CONTEXT-EQUAL-FAILURES: equal values do not erase independent occurrences', async () => {
+    const started = deferred();
+    const finish = deferred();
+    const provide = createTimerScope({
+      delay: 0,
+      handler: async () => {
+        started.resolve();
+        await finish.promise;
+        throw 0;
+      },
+    });
+    const run = provide(async () => {
+      await started.promise;
+      finish.resolve();
+      throw 0;
+    })({});
+    await expect(run).rejects.toMatchObject({ error: 0, suppressed: 0 });
   });
 
   test('CASE-TIMER-CONTEXT-UNOBSERVED: a handler failure cannot disappear behind a successful body', async () => {
@@ -134,8 +225,16 @@ describe('provider-owned context scope', () => {
     const reason = { handler: 'failed' };
     const provide = createTimerScope({
       delay: 0,
-      handler: () => { finished.resolve(); throw reason; },
+      handler: () => {
+        finished.resolve();
+        throw reason;
+      },
     });
-    await expect(provide(async () => { await finished.promise; return 42; })({})).rejects.toBe(reason);
+    await expect(
+      provide(async () => {
+        await finished.promise;
+        return 42;
+      })({}),
+    ).rejects.toBe(reason);
   });
 });

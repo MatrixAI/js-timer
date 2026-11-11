@@ -1,0 +1,31 @@
+version: 1
+role: planned-case-inventory
+normative_source: adr.md
+execution_status: not-run
+cases:
+  - id: CASE-TIMER-COMPLETION
+    intent: Gate handler and cleanup; assert execution and owner completion remain pending until both finish.
+  - id: CASE-TIMER-DETACHED
+    intent: Distinguish returned work from an explicitly detached effect outside the timer boundary.
+  - id: CASE-TIMER-SCHEDULE-RACE
+    intent: Control stale wakeups, cancellation, refresh and reset; assert at most one handler entry.
+  - id: CASE-TIMER-SETUP-FAILURE
+    intent: Fail acquisition after partial setup and observe cleanup and both failure roles.
+  - id: CASE-TIMER-REQUEST-PHASES
+    intent: Cancel before and after entry; gate an uncooperative handler and distinguish request from completion.
+  - id: CASE-TIMER-REASON
+    intent: Check exact first reason identity, arbitrary values and native default-abort behavior.
+  - id: CASE-TIMER-UPSTREAM
+    intent: Exercise pre-aborted and later parent requests, one-way authority and link lifetime.
+  - id: CASE-TIMER-LINK-FAILURE
+    intent: Fail unlinking; assert logical closure, observable failure and retry without early release.
+  - id: CASE-TIMER-WAIT
+    intent: Abandon one borrowed wait without requesting cancellation or stopping the timer.
+  - id: CASE-TIMER-LATE-FAILURE
+    intent: Abandon a wait and observe the eventual handler failure through the owner outcome.
+  - id: CASE-TIMER-CLEANUP-FAILURE
+    intent: Fail work and cleanup separately and together; assert value identity and documented failure roles.
+  - id: CASE-TIMER-RESET
+    intent: Exercise finite and infinite delays, normalization, refresh, reset and post-entry rejection.
+  - id: CASE-TIMER-RUNTIMES
+    intent: Run installed-package timer behavior in Node, a browser document and a dedicated worker.

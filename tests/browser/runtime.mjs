@@ -28,8 +28,11 @@ let browser;
 const results = [];
 try {
   if (process.env.CHECK_PLAYWRIGHT_VERSION != null) {
-    assert.equal(playwrightManifest.version, process.env.CHECK_PLAYWRIGHT_VERSION,
-      'The npm Playwright driver must match the selected Nix browser driver');
+    assert.equal(
+      playwrightManifest.version,
+      process.env.CHECK_PLAYWRIGHT_VERSION,
+      'The npm Playwright driver must match the selected Nix browser driver',
+    );
   }
   await new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -73,6 +76,7 @@ try {
     assert.equal(result.scopeValue, 'browser:11');
     assert.equal(result.resetValue, 9);
     assert.equal(result.groupValue, '2,3');
+    assert.equal(result.facadeValue, 19);
     for (const key of [
       'infinite',
       'cancelled',
@@ -83,6 +87,7 @@ try {
       'deadlineExpired',
       'waiterIsolated',
       'actualCompleted',
+      'linked',
     ]) {
       assert.equal(result[key], true, key);
     }

@@ -129,11 +129,12 @@
               nodejs
               (pkgs.lib.hiPrio npm)
               lint
+              pkgs.gnutar
+              pkgs.structured-madr
             ];
             env = browserEnvironment;
             enterShell = ''
               export PATH="${lint}/bin:${npm}/bin:$PWD/dist/bin:$PWD/node_modules/.bin:$PATH"
-              npm install --no-audit --fund=false --prefer-offline || return "$?"
             '';
           };
         };

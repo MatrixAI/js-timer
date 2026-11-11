@@ -1,5 +1,29 @@
 # Verification
 
+## Version 5 redesign verification
+
+The unreleased version 5 redesign is a breaking change over the earlier releases
+described below. Its working tree is based on timer revision
+`bacfcb2cdf3d18de0316cfdffc924ec7f0be97b3` and includes uncommitted changes; it
+is not a released revision. The selected contexts 4.0.0 commit is
+`1a0f7b6dc486dff54e8785bfe30e0cf7fe269273`, and async-cancellable 4.0.0 is
+`3bf93589b3ba4879181b93c8b5e8dc51e768bedc`.
+
+On 2026-11-11, Node 24 typechecking and the build-first Vitest suite passed,
+including 68 runtime and type tests. MatrixAI lint 3 fix mode passed. The
+Structured MADR validator accepted all three ADRs. The requirements and planned
+cases remain unevidenced in their registries; these results are not a complete
+claim of specification conformance.
+
+The runtime-neutral source graph is checked by the existing emitted-import audit
+and the packed Chromium document and dedicated-worker integration lane. The
+audit is not an ESLint architecture rule: it does not cover type-only imports or
+every possible dynamic import expression. A project-specific lint restriction
+for that boundary remains an enforcement gap.
+
+The sections below describe historical releases and checks, not the current
+version 5 API or current dependency graph.
+
 ## Modernization scope
 
 The timer retains its public constructors, promise/cancellation behavior, native

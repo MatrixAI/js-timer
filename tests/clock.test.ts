@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const originalPerformance = Object.getOwnPropertyDescriptor(
   globalThis,
@@ -14,12 +14,12 @@ function setPerformance(value: unknown) {
 }
 
 beforeEach(() => {
-  jest.resetModules();
+  vi.resetModules();
 });
 
 afterEach(() => {
   for (const timer of timers.splice(0)) timer.cancel();
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   if (originalPerformance != null) {
     Object.defineProperty(globalThis, 'performance', originalPerformance);
   } else {
@@ -28,6 +28,21 @@ afterEach(() => {
 });
 
 describe('portable timer clock', () => {
+  test('shares one monotonic clock between direct timers and deadline scopes', async () => {
+    let current = 2000;
+    setPerformance({ timeOrigin: 0, now: () => current });
+    const { Timer, timerClock } = await import('#index.js');
+    const first = new Timer({ delay: Infinity });
+    timers.push(first);
+    current = 2100;
+    expect(timerClock.now()).toBe(2100);
+    current = 1900;
+    const second = new Timer({ delay: Infinity });
+    timers.push(second);
+    expect(second.timestamp.getTime()).toBe(2100);
+    expect(timerClock.now()).toBe(2100);
+  });
+
   test('uses one clock for construction, countdown, reset, and refresh', async () => {
     let relative = 10;
     setPerformance({
@@ -63,7 +78,7 @@ describe('portable timer clock', () => {
     'falls back without requiring the Performance API: %p',
     async (performance) => {
       setPerformance(performance);
-      jest.spyOn(Date, 'now').mockReturnValue(2000);
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
       const { Timer } = await import('#index.js');
       const timer = new Timer({ delay: 1000 });
       timers.push(timer);
@@ -74,7 +89,7 @@ describe('portable timer clock', () => {
 
   test('clamps backwards wall-clock changes without increasing remaining time', async () => {
     setPerformance(undefined);
-    const wall = jest.spyOn(Date, 'now').mockReturnValue(2000);
+    const wall = vi.spyOn(Date, 'now').mockReturnValue(2000);
     const { Timer } = await import('#index.js');
     const timer = new Timer({ delay: 1000 });
     timers.push(timer);
@@ -93,7 +108,7 @@ describe('portable timer clock', () => {
         throw new Error('restricted');
       },
     });
-    jest.spyOn(Date, 'now').mockReturnValue(2000);
+    vi.spyOn(Date, 'now').mockReturnValue(2000);
     const { Timer } = await import('#index.js');
     const timer = new Timer({ delay: Infinity });
     timers.push(timer);

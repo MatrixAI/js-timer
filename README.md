@@ -3,18 +3,18 @@
 An awaitable stopwatch/timer with cancellation, handler execution,
 reset/refresh, and remaining-time inspection.
 
-## Version 4 compatibility
+## Version 5 migration
 
-Version 4 separates execution completion from cancellable waiting and adopts
-released contexts v3.0.0 and async-cancellable v3.0.0. Consumers of version 3's
-lazy/eager and injected-controller APIs must migrate deliberately; changing
-their dependency alone is not sufficient. Existing tags retain their original API.
+This development version adopts contexts v4 and async-cancellable v4. Timer
+execution remains separate from abortable waiting, and upstream signals can be
+linked directionally. Timer completion now includes owned scheduler and link
+cleanup and reports cleanup failures. Existing version 4 installations retain
+their original API; this checkout is not itself a published version 5 release.
 
 ## Installation and usage
 
-```sh
-npm install --save 'git+ssh://git@github.com/MatrixAI/js-timer.git#v4.0.0'
-```
+Use a released Git tag when consuming the package. Version 5 must be released
+before it can be installed by its version 5 tag.
 
 ```ts
 import { Timer } from '@matrixai/timer';
@@ -33,7 +33,13 @@ The two-argument positional constructor is also supported. Cancelling pending
 scheduling rejects with the exact reason and prevents handler entry. Cancelling
 a running handler requests cooperation; awaiting the timer still observes the
 handler's actual result. Infinite delays remain pending until cancelled or reset
-to a finite delay. Reset and refresh reject changes after execution starts.
+to a finite delay. Reset and refresh reject changes after execution starts. An
+optional `signal` in the options links an upstream request without granting
+authority over its controller. The link stays owned until execution and cleanup
+finish. If clearing a scheduler handle or removing an upstream listener fails,
+`completion` retains that failure and `retryCleanup()` can retry cleanup after
+settlement. A failed reset after the previous schedule has been invalidated
+settles the timer with the failure rather than leaving it pending indefinitely.
 
 Use `timer.wait(signal)` to abandon only one caller's wait. It never cancels the
 timer. The always-fulfilled `timer.completion` records the immutable actual
@@ -41,16 +47,15 @@ execution outcome; it cannot be cancelled by a waiter. A noncooperative handler
 can keep completion pending indefinitely. Native chains do not forward
 cancellation automatically.
 
-The previous lazy/eager flags and injected-controller overloads are removed.
-Use explicit execution cancellation or waiter cancellation instead. Attaching a
+The previous lazy/eager flags and injected-controller overloads are removed. Use
+explicit execution cancellation or waiter cancellation instead. Attaching a
 signal listener does not silently select policy. No performance improvement is
 claimed by this redesign.
 
 ## Composable timer ownership
 
-Timer uses the canonical contexts 3.0.0 scope contract.
-Applications compose the provider-owned scope rather than implement timer
-ownership repeatedly:
+Timer uses the canonical contexts 4.0.0 scope contract. Applications compose the
+provider-owned scope rather than implement timer ownership repeatedly:
 
 ```ts
 import type { ContextOperation } from '@matrixai/contexts';
@@ -58,50 +63,142 @@ import type { TimerContext } from '@matrixai/timer';
 import { createTimerScope } from '@matrixai/timer';
 
 const provideTimer = createTimerScope({ delay: 10, handler: () => 7 });
-const work: ContextOperation<TimerContext<number> & { trace: string }, string> =
-  async ({ timer, trace }) => `${trace}:${await timer}`;
+const work: ContextOperation<
+  TimerContext<number> & { trace: string },
+  string
+> = async ({ timer, trace }) => `${trace}:${await timer}`;
 const run: ContextOperation<{ trace: string }, string> = provideTimer(work);
 const result = await run({ trace: 'application-owned' });
 ```
 
 Construction is inert. Each execution owns a fresh timer; overlapping calls do
-not share timer state. Other context requirements remain the caller's job.
-This scope can nest directly with other contexts scopes in application-selected
+not share timer state. Other context requirements remain the caller's job. This
+scope can nest directly with other contexts scopes in application-selected
 order. The application still owns retries, supervision, and shutdown policy.
 
-On scope completion, pending scheduling is
-cancelled and any started handler is awaited before outer resources may be
-released. Cancellation requests do not force a running handler to complete.
-A handler that never finishes therefore prevents scope completion; callers must
-design cooperative termination, not release live resources on a timeout race.
+On scope completion, pending scheduling is cancelled and any started handler is
+awaited before outer resources may be released. Cancellation requests do not
+force a running handler to complete. A handler that never finishes therefore
+prevents scope completion; callers must design cooperative termination, not
+release live resources on a timeout race.
 
 Successful cleanup preserves the body's exact result or rejection. A handler
-failure not already propagated by the body is a release failure. If both fail,
-contexts preserves the handler failure as `SuppressedError.error` and the body
-failure as `SuppressedError.suppressed`. The identical propagated handler failure
-is not reported twice. Pending scheduling cancelled by scope release is normal
-cleanup, not an application failure.
+failure is a release failure. If both fail, contexts preserves the handler
+failure as `SuppressedError.error` and the body failure as
+`SuppressedError.suppressed`. Equal values alone cannot prove that failures are
+the same occurrence, so both roles are retained even when the body propagates
+the timer's own rejection. Pending scheduling cancelled by scope release is
+normal cleanup, not an application failure.
 
-The scope does not acquire borrowed timers, supply a cancellation controller,
-link a parent signal, or interpret a refreshable timer as a fixed deadline.
-Its handler receives the timer-owned cancellation signal. Generic cancellation
-sources, linking, and borrowed waits come from async-cancellable rather than a
-second timer-specific cancellation implementation.
+The scope does not acquire borrowed timers, supply a cancellation controller, or
+interpret a refreshable timer as a fixed deadline. When the outer context has a
+signal, the timer borrows it directionally; its handler receives the timer-owned
+cancellation signal. Generic cancellation sources, linking, and borrowed waits
+come from async-cancellable rather than a second timer-specific cancellation
+implementation.
+
+### Functional and method facades
+
+Timing facades adapt the same scope for argument-bearing functions and standard
+method decorators. The context argument position is explicit. These adapters
+preserve the function signature; a provider field can be optional in that
+signature because the scope supplies it for the body.
+
+```ts
+import { createTimerScope, createTimingFacades, Timer } from '@matrixai/timer';
+
+type Context = { trace: string; timer?: Timer<number>; signal?: AbortSignal };
+const timing = createTimingFacades<Context>()(
+  createTimerScope({ delay: 10, handler: () => 7 }),
+);
+
+class Worker {
+  @timing.method({ context: 1 })
+  async run(label: string, context: Context): Promise<string> {
+    return `${label}:${context.trace}:${await context.timer!}`;
+  }
+}
+
+const run = timing.function(
+  async (context: Context) => `${context.trace}:${await context.timer!}`,
+  { context: 'last' },
+);
+```
+
+Use the scope directly when the caller-facing operation type should remove the
+provided requirement entirely. Scope nesting remains application-selected.
+
+### Named deadline authoring forms
+
+The unreleased named facades select an explicit return protocol and a required
+context argument. A fresh finite, nonnegative duration in milliseconds is
+required on each entry; it can be a number or a receiver- and argument-dependent
+function. A custom clock can be supplied. The default is `timerClock`.
+
+```ts
+import { timed, timedCancellable } from '@matrixai/timer/functions';
+import { timed as timedMethod } from '@matrixai/timer/decorators';
+
+type Request = { trace: string; signal?: AbortSignal };
+const read = timed(async (request: Request) => request.trace, {
+  context: 0,
+  kind: 'async',
+  duration: 1_000,
+});
+const cancellableRead = timedCancellable(
+  async (request: Request) => request.trace,
+  {
+    context: 0,
+    duration: 1_000,
+  },
+);
+class Service {
+  @timedMethod({ context: 0, kind: 'sync', duration: 1_000 })
+  read(request: Request): string {
+    return request.trace;
+  }
+}
+```
+
+`kind` also supports `generator` and `async-generator`. Their budgets begin on
+first advancement, not iterator construction. Pre-start return and throw do not
+acquire resources. Caller-driven cleanup that yields retains ownership until
+another advancement reaches a terminal result. An abandoned iterator may retain
+its scheduler and links indefinitely. Overlapping async-generator operations are
+rejected; disposal cannot silently drain yielded cleanup.
+
+These forms provide a deadline and local signal, not a `Timer` instance. They
+borrow any existing timer without changing it. An inherited fixed deadline must
+use the same clock and can only shorten the new budget. Expiry requests
+cancellation with `ErrorTimerDeadlineExceeded`; it does not force work to
+finish. Synchronous calls cannot be preempted by an event-loop timeout. Their
+scheduler has synchronous cleanup and does not own an asynchronous timer
+handler. The combined function returns a completion-safe cancellable promise;
+the standard method decorator cannot change the method's declared TypeScript
+return type. Selected context arguments must be ordinary data records in finite
+required argument tuples; overloads and generic signatures are not preserved
+generally. For generators with explicitly typed input values, declare the
+generator function separately before adapting it; inline expressions can exceed
+TypeScript's inference for these context checks.
 
 ### Fixed deadlines and relative budgets
 
-`constrainDeadline` and `createDeadlineConstraintScope` intersect finite absolute
-constraints from the same clock identity without scheduling or cancelling work.
-They use the smaller timestamp and reject incomparable clocks.
+`constrainDeadline` and `createDeadlineConstraintScope` intersect finite
+absolute constraints from the same clock identity without scheduling or
+cancelling work. They use the smaller timestamp and reject incomparable clocks.
 
-`createDeadlineScope` enforces a captured absolute bound with an owned signal and
-scheduler; `createTimeoutScope` computes a fresh relative budget on every entry.
-Neither widens an inherited deadline. Wrapping a retry loop gives a total budget;
-putting the timeout inside that loop gives each attempt a fresh budget, still
-bounded by any outer constraint. Expiry requests cancellation, not early scope
-completion. Owned scheduling is stopped and monitored work drained on release.
-The minimum laws apply to fixed same-clock constraints, not mutable reset/refresh
-timers or arbitrary handler executions.
+`createDeadlineScope` enforces a captured absolute bound with an owned signal
+and scheduler; `createTimeoutScope` computes a fresh relative budget on every
+entry. Neither widens an inherited deadline. Wrapping a retry loop gives a total
+budget; putting the timeout inside that loop gives each attempt a fresh budget,
+still bounded by any outer constraint. Expiry requests cancellation, not early
+scope completion. Owned scheduling is stopped and monitored work drained on
+release. The minimum laws apply to fixed same-clock constraints, not mutable
+reset/refresh timers or arbitrary handler executions.
+
+Applications use these scope factories directly; they do not construct the
+internal deadline execution owner. The default deadline clock and standalone
+timers share one private, weakly monotonic clock per loaded module instance.
 
 ## Portable clock and host timers
 
@@ -128,28 +225,27 @@ not completed.
 
 ### Released dependency boundary
 
-The errors dependency remains selected by its released Git tag over SSH. The
-contexts dependency selects the private Git-only `v3.0.0` release; the npm lock
-pins its exact commit `dc958bdffdd535cd347d9fe6f800d91177ede341`. Cancellation
-selects its Git-only `v3.0.0` release at
-`8566e758e19d18fbd729af28f21a770768d5dcdc`. Authorized SSH access is required
-for acquisition. Older npm-registry releases do not supply these APIs.
+The errors dependency remains selected by its released Git tag over SSH.
+Contexts and cancellation select their Git-only `v4.0.0` releases; the npm lock
+pins the exact provider commits. Authorized SSH access is required for
+acquisition. Older npm-registry releases do not supply these APIs.
 
 These selections use the existing async-init consumer pattern: the npm lock owns
 the exact revision, the Nix source loader selects its prepared archive and
 validates the producer descriptors, and native/sandbox installation uses that
-archive without rewriting the packed manifest. There is no direct contexts
-flake input, second pin, local source override, or extra package lock. Credentials
-are not embedded in URLs or archives, and private artifacts must not be uploaded
-to a public binary cache without separate authority.
+archive without rewriting the packed manifest. There is no direct contexts flake
+input, second pin, local source override, or extra package lock. Credentials are
+not embedded in URLs or archives, and private artifacts must not be uploaded to
+a public binary cache without separate authority.
 
-For explicit local provider experiments, `npm run check:candidate --
-/absolute/cancellation.tgz --browser` creates an isolated consumer with a
-generated dependency edge. Add `--lifecycle-root /absolute/async-init-checkout`
-after that checkout's packed-package check to exercise admission, race losers,
-timer cleanup, and service stop ordering. This optional lane preserves the
-lifecycle package's own locked dependency scopes. It is not the canonical
-dependency-selection or release gate, and its generated archive is not a release.
+For explicit local provider experiments,
+`npm run check:candidate -- /absolute/cancellation.tgz --browser` creates an
+isolated consumer with a generated dependency edge. Add
+`--lifecycle-root /absolute/async-init-checkout` after that checkout's
+packed-package check to exercise admission, race losers, timer cleanup, and
+service stop ordering. This optional lane preserves the lifecycle package's own
+locked dependency scopes. It is not the canonical dependency-selection or
+release gate, and its generated archive is not a release.
 
 ## Development
 
@@ -157,27 +253,30 @@ Use Node.js 24 or newer. The [flake](flake.nix) provides integrated
 flake-parts/devenv and [direnv activation](.envrc). Review the configuration and
 run `direnv allow .`. The prepared-dependency npm adapter serializes
 installation and restores canonical manifests after install-only source
-overrides. Activation does not load credentials or change persistent shell
-options. Once activated, run project commands directly.
+overrides. Activation does not install dependencies, load credentials, or change
+persistent shell options. Once activated, install dependencies explicitly and
+run project commands directly.
 
 ```sh
 git submodule update --init --depth 1
 nix run './.matrixai/matrixai-standards#skills-materializer' -- --standards-root ./.matrixai/matrixai-standards
+npm install
 npm run lintfix
 npm run build
 npm run typecheck
-npm test -- --runInBand
+npm test -- --no-file-parallelism
 npm run check:package
 npm run check:portable
 npm run check
 ```
 
-Tests compile first and use Jest/SWC in ESM mode against emitted modules.
-Arguments pass through `npm test`. JUnit is written under `tmp/junit`; optional
-V8/Cobertura coverage is produced with `npm test -- --runInBand --coverage`. Use
-`npm run lintfix` for active development and `npm run lint` for non-mutating
-verification. Documentation is handwritten at the repository root; there is no
-TypeDoc dependency, generated documentation directory, or installer test suite.
+Tests compile first and use Vitest against emitted modules, with explicit test
+imports and standard decorators. Arguments pass through `npm test`. JUnit is
+written under `tmp/junit`; optional V8/Cobertura coverage is produced with
+`npm test -- --no-file-parallelism --coverage`. Use `npm run lintfix` for active
+development and `npm run lint` for non-mutating verification. Documentation is
+handwritten at the repository root; there is no TypeDoc dependency, generated
+documentation directory, or installer test suite.
 
 ### Lint and formatting
 
@@ -217,10 +316,11 @@ Source and packed manifests preserve dependency declarations and lifecycle
 scripts verbatim.
 
 Schema-v1 package/distribution descriptors expose manifest metadata and honest
-source provenance. Cancellation, contexts, and errors are advertised as selected direct runtime
-providers. Contexts has an empty runtime dependency set; its test dependencies
-do not become timer dependencies. Timer remains both a consumer of prepared
-archives and a producer of its own archive, with no bundled dependency tree.
+source provenance. Cancellation, contexts, and errors are advertised as selected
+direct runtime providers. Contexts has an empty runtime dependency set; its test
+dependencies do not become timer dependencies. Timer remains both a consumer of
+prepared archives and a producer of its own archive, with no bundled dependency
+tree.
 
 The npm lock, not distribution metadata, owns the transitive dependency graph.
 Select each required Git-backed dependency at its concrete locked module path;
