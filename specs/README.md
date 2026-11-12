@@ -39,27 +39,29 @@ browser portability, or Nix package-consumer conformance.
 
 The current
 [execution requirements](0002-timer-execution-and-completion/requirements.yml),
-[timing requirements](0003-scoped-deadlines-and-timing/requirements.yml),
-and [controller requirements](0005-deadline-controller/requirements.yml)
-index accepted clauses. Their attached case inventories are planned, not proof
-of execution. The historical candidate receipt remains unchanged and applies
-only to the candidate it identifies.
+[timing requirements](0003-scoped-deadlines-and-timing/requirements.yml), and
+[controller requirements](0005-deadline-controller/requirements.yml) index
+accepted clauses. The
+[controller receipt](0005-deadline-controller/evidence.yml) records bounded test
+observations; requirement-level assessment remains pending. Other case
+inventories are planned, not proof of execution. The historical candidate
+receipt remains unchanged and applies only to the candidate it identifies.
 
 ### Current review inventory
 
-| Boundary                    | Implementation to review                    | Existing test input                                                                                 | Evidence status                                 |
-| --------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Timer execution and waits   | [Timer](../src/Timer.ts)                    | [Timer cases](../tests/Timer.test.ts), [completion cases](../tests/completion.test.ts)              | Unassessed against current provider APIs        |
-| Fixed and relative timing   | [Deadline source](../src/deadline/utils.ts) | [Deadline cases](../tests/deadline/index.test.ts)                                                   | Unassessed against active requirements          |
-| Independent controller      | [Controller](../src/deadline/DeadlineController.ts) | [Controller cases](../tests/deadline/DeadlineController.test.ts)                           | Requirement-level assessment pending            |
-| Owned timer scope           | [Scope source](../src/context.ts)           | [Scope cases](../tests/context.test.ts)                                                             | Unassessed against active requirements          |
-| Function and method facades | [Scope facade factory](../src/utils.ts)     | [Facade cases](../tests/facades.test.ts), [named authoring cases](../tests/functions/index.test.ts) | Named policies and protocol coverage unassessed |
-| Runtime boundaries          | [Package entry](../src/index.ts)            | [Browser fixtures](../tests/fixtures/browser/runtime.mjs)                                           | Current released-provider graph not assessed    |
+| Boundary                    | Implementation to review                            | Existing test input                                                                                           | Evidence status                                 |
+| --------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Timer execution and waits   | [Timer](../src/Timer.ts)                            | [Timer cases](../tests/unit/Timer.test.ts), [completion cases](../tests/unit/completion.test.ts)              | Unassessed against current provider APIs        |
+| Fixed and relative timing   | [Deadline source](../src/deadline/utils.ts)         | [Deadline cases](../tests/unit/deadline/index.test.ts)                                                        | Unassessed against active requirements          |
+| Independent controller      | [Controller](../src/deadline/DeadlineController.ts) | [Controller cases](../tests/unit/deadline/DeadlineController.test.ts)                                         | Requirement-level assessment pending            |
+| Owned timer scope           | [Scope source](../src/context.ts)                   | [Scope cases](../tests/unit/context.test.ts)                                                                  | Unassessed against active requirements          |
+| Function and method facades | [Scope facade factory](../src/utils.ts)             | [Facade cases](../tests/unit/facades.test.ts), [named authoring cases](../tests/unit/functions/index.test.ts) | Named policies and protocol coverage unassessed |
+| Runtime boundaries          | [Package entry](../src/index.ts)                    | [Browser fixtures](../tests/browser/runtime.spec.ts)                                                          | Current released-provider graph not assessed    |
 
-These references identify review inputs, not test-to-requirement bindings. The
-historical candidate receipt identifies its own archive hashes and cancellation
-revision; its results must not be relabeled as evidence for another revision or
-the currently locked dependency graph.
+The table identifies review inputs; controller test-to-requirement bindings are
+in its registry. The historical candidate receipt identifies its own archive
+hashes and cancellation revision; its results must not be relabeled as evidence
+for another revision or the currently locked dependency graph.
 
 ### Local baseline observation
 

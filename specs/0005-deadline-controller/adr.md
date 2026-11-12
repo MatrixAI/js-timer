@@ -86,11 +86,11 @@ work, or release when any one attempt finishes. A manager can choose sequential
 or concurrent attempts; it must observe the represented completion and cleanup
 that its own release policy depends on.
 
-The following TypeScript-like example uses the controller API. The
-release helper is illustrative application code. `bracketResource` is the
-existing contexts bracket. The attempt functions and parent context belong to
-the application. The release helper below preserves distinct monitoring and
-close failures rather than losing either one.
+The following TypeScript-like example uses the controller API. The release
+helper is illustrative application code. `bracketResource` is the existing
+contexts bracket. The attempt functions and parent context belong to the
+application. The release helper below preserves distinct monitoring and close
+failures rather than losing either one.
 
 ```typescript
 import { bracketResource } from '@matrixai/contexts';
@@ -143,20 +143,21 @@ not acquire authority to release it.
 
 An ICE negotiation coordinator can own a single five-second deadline while
 candidate-pair checks, signaling, retries, and relay-related work begin at
-different times. A check started after three seconds inherits the original bound,
-not a fresh five-second budget. A per-attempt budget can narrow that bound, but
-only when both constraints use the same clock identity. This scenario illustrates
-application ownership; it does not prescribe ICE nomination or transport policy.
+different times. A check started after three seconds inherits the original
+bound, not a fresh five-second budget. A per-attempt budget can narrow that
+bound, but only when both constraints use the same clock identity. This scenario
+illustrates application ownership; it does not prescribe ICE nomination or
+transport policy.
 
 The deadline controller requests cancellation of participating checks on expiry.
 It does not select a winning candidate, track tasks, join their completion, or
 transfer a connection. A coordinator can link a separate cancellation controller
-for each attempt to the shared signal. When its own selection policy identifies a
-winner, it can request cancellation of the losers individually and observe their
-actual completion and cleanup. Aborting the shared signal instead would also
-request cancellation of a winner that still observes it. The coordinator must
-explicitly hand off the selected connection, its cancellation relationships,
-and other required resources to their next owner.
+for each attempt to the shared signal. When its own selection policy identifies
+a winner, it can request cancellation of the losers individually and observe
+their actual completion and cleanup. Aborting the shared signal instead would
+also request cancellation of a winner that still observes it. The coordinator
+must explicitly hand off the selected connection, its cancellation
+relationships, and other required resources to their next owner.
 
 An asynchronous scope can instead represent the entire negotiation, even when
 the body runs concurrently or awaits callbacks. It must retain the completion
@@ -167,18 +168,18 @@ operations, not merely because those operations happen to run concurrently.
 
 ### Constraint, controller, timer, and scope
 
-| Concept                      | Responsibility                                                                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Fixed deadline               | Describes an absolute bound and its clock; does not itself schedule or request cancellation.                                        |
-| Deadline controller          | Owns enforcement resources and supplies a deadline and signal to independent consumers.                                             |
-| Timer                        | Owns a scheduled timer execution and, when present, its handler completion; expiry is not automatically an abort of unrelated work. |
-| Deadline scope               | Runs represented work with timing capabilities and retains its own required completion and release obligations.                     |
+| Concept             | Responsibility                                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Fixed deadline      | Describes an absolute bound and its clock; does not itself schedule or request cancellation.                                        |
+| Deadline controller | Owns enforcement resources and supplies a deadline and signal to independent consumers.                                             |
+| Timer               | Owns a scheduled timer execution and, when present, its handler completion; expiry is not automatically an abort of unrelated work. |
+| Deadline scope      | Runs represented work with timing capabilities and retains its own required completion and release obligations.                     |
 
-The controller is not a task group, execution join, timer replacement,
-or proof of timely completion. Sharing its signal does not transfer authority to
-abort or close it. A scope may acquire a controller internally, but it must
-still retain represented body work and required cleanup. A reusable controller
-does not make detached or untracked work part of a scope's completion.
+The controller is not a task group, execution join, timer replacement, or proof
+of timely completion. Sharing its signal does not transfer authority to abort or
+close it. A scope may acquire a controller internally, but it must still retain
+represented body work and required cleanup. A reusable controller does not make
+detached or untracked work part of a scope's completion.
 
 ### Current implementation and boundaries
 
@@ -251,11 +252,11 @@ completion. Consumer scenarios and failure cases require review before release.
 
 ## Decision
 
-Select option 3: define a provider-owned deadline enforcement
-controller that can be owned independently of one scope invocation. Expose it
-from the package root as `DeadlineController`. It supplies one fixed deadline
-and one observation signal while owning its scheduler and cancellation links. It
-is separate from `Timer` and does not execute or join consumers.
+Select option 3: define a provider-owned deadline enforcement controller that
+can be owned independently of one scope invocation. Expose it from the package
+root as `DeadlineController`. It supplies one fixed deadline and one observation
+signal while owning its scheduler and cancellation links. It is separate from
+`Timer` and does not execute or join consumers.
 
 Select synchronous construction and synchronous `close()`, with separate
 non-rejecting `monitoring` and immediately readable `monitoringState` outcomes
@@ -274,9 +275,10 @@ own resources without aborting the signal, and keep local `abort()` usable after
 close. Monitoring and release failures remain observable under the requirements
 below, including when close is reentrant.
 
-These choices do not establish that the current owner classes can be replaced without
-protocol-specific evidence. A separately reviewed async scope or synchronous
-generator adapter may still be needed to preserve its completion contract.
+These choices do not establish that the current owner classes can be replaced
+without protocol-specific evidence. A separately reviewed async scope or
+synchronous generator adapter may still be needed to preserve its completion
+contract.
 
 ### Public shape
 
@@ -557,13 +559,13 @@ conditional on preserving their own ownership and failure boundaries.
 ## More Information
 
 Existing scope and facade tests are review inputs. The implementation includes
-[controller runtime cases](../../tests/deadline/DeadlineController.test.ts) and
-[type cases](../../tests/deadline/DeadlineController.test-d.ts). Their presence
-alone does not establish complete conformance or a release decision.
+[controller runtime cases](../../tests/unit/deadline/DeadlineController.test.ts)
+and [type cases](../../tests/unit/deadline/DeadlineController.test-d.ts). Their
+presence alone does not establish complete conformance or a release decision.
 
 The [requirement index](requirements.yml) and [case inventory](cases.yml) are
-non-normative review aids. Their planned cases and current test references are not
-by themselves evidence of complete requirement satisfaction.
+non-normative review aids. Their planned cases and current test references are
+not by themselves evidence of complete requirement satisfaction.
 
 ## Audit
 
@@ -593,11 +595,11 @@ release.
 
 **Findings:**
 
-| Finding                                | Files                                                          | Lines                     | Assessment                                          |
-| -------------------------------------- | -------------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
-| Independent negotiation ownership fits | [Controller](../../src/deadline/DeadlineController.ts)         | Controller contract       | Accepted without implying task or transport ownership |
-| Focused tests do not prove all cases   | [Controller tests](../../tests/deadline/DeadlineController.test.ts) | Runtime cases          | Additional conformance and integration review needed |
-| Adapter reuse is not established       | [Async owner](../../src/deadline/DeadlineScopeOwner.ts), [sync owner](../../src/deadline/SynchronousDeadlineOwner.ts) | Release boundaries | Preserve distinct boundaries pending protocol review |
+| Finding                                | Files                                                                                                                 | Lines               | Assessment                                            |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------- |
+| Independent negotiation ownership fits | [Controller](../../src/deadline/DeadlineController.ts)                                                                | Controller contract | Accepted without implying task or transport ownership |
+| Focused tests do not prove all cases   | [Controller tests](../../tests/unit/deadline/DeadlineController.test.ts)                                              | Runtime cases       | Additional conformance and integration review needed  |
+| Adapter reuse is not established       | [Async owner](../../src/deadline/DeadlineScopeOwner.ts), [sync owner](../../src/deadline/SynchronousDeadlineOwner.ts) | Release boundaries  | Preserve distinct boundaries pending protocol review  |
 
 **Summary:** The public controller decision is accepted for independently owned
 budgets, including negotiation and fan-out. Active requirements remain separate

@@ -27,6 +27,7 @@ verification:
   notes:
     - Reports identify local retained artifacts, not released dependency coordinates.
     - This receipt describes the candidate snapshot before this receipt was attached.
+    - Source paths describe that historical snapshot; test files have since moved and the candidate-only lifecycle fixture was removed.
 limitations:
   - The canonical manifest and lock do not yet select the unreleased cancellation API.
   - The candidate lane substitutes an archive in a temporary consumer; it is not canonical installation evidence.

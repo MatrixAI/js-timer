@@ -4,36 +4,43 @@ normative_source: adr.md
 decision_status: accepted
 assessment_status: pending
 case_registries: [cases.yml]
+evidence_registries: [evidence.yml]
 requirements:
   - id: REQ-TIMER-DEADLINE-CONTROLLER-001
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-001
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-CAPABILITIES, CASE-CONTROLLER-FANOUT]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-002
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-002
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-BOUNDS]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-003
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-003
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-EXPIRY, CASE-CONTROLLER-FANOUT]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-004
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-004
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-LINKS, CASE-CONTROLLER-FANOUT]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-005
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-005
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-RELEASE, CASE-CONTROLLER-FANOUT]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-006
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-006
     requirement_status: active
-    evidence_status: unevidenced
+    evidence_status: partial
+    evidence: [EVID-CONTROLLER-NODE-20261112]
     cases: [CASE-CONTROLLER-MONITOR]
   - id: REQ-TIMER-DEADLINE-CONTROLLER-007
     spec: adr.md#REQ-TIMER-DEADLINE-CONTROLLER-007

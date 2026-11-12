@@ -39,18 +39,12 @@
   },
   "scripts": {
     "prepare": "tsc -p ./tsconfig.build.json",
-    "build": "shx rm -rf ./dist && tsc -p ./tsconfig.build.json",
+    "build": "node ./scripts/build.mjs",
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
     "tsx": "tsx",
     "test": "node ./scripts/test.mjs",
-    "typecheck": "tsc -p ./tsconfig.json",
-    "check:candidate": "node ./scripts/check-candidate.mjs",
     "lint": "matrixai-lint --check",
-    "lintfix": "matrixai-lint --fix",
-    "test:browser": "npm run build && node ./tests/browser/runtime.mjs",
-    "check": "npm run check:conformance && npm run lint",
-    "check:portable": "node --experimental-import-meta-resolve ./scripts/check-portable.mjs",
-    "check:conformance": "npm run build && npm run typecheck && npm test -- --no-file-parallelism && npm run check:portable"
+    "lintfix": "matrixai-lint --fix"
   },
   "dependencies": {
     "@matrixai/async-cancellable": "git+ssh://git@github.com/MatrixAI/js-async-cancellable.git#v4.0.0",
@@ -65,7 +59,6 @@
     "@types/node": "^24.19.0",
     "@vitest/coverage-v8": "5.1.0",
     "esbuild": "0.28.2",
-    "shx": "^0.3.4",
     "tsx": "^4.19.3",
     "typescript": "~5.9.3",
     "vitest": "5.1.0"

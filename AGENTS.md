@@ -10,9 +10,9 @@
 - Run `npm run lintfix` during development; reserve `npm run lint` for
   non-mutating verification. MatrixAI lint owns formatting across supported
   domains. Do not invoke underlying formatters directly.
-- Golden commands: `npm run build`, `npm run typecheck`,
-  `npm test -- --no-file-parallelism`, `npm run check:portable`,
-  `npm run test:browser`, and `npm run check`.
+- Golden commands: `npm run build`, `npm test`, `npm run lint`, and
+  `nix flake check`. Browser testing runs in its independent Nix check, not as
+  part of normal tests.
 - Use Vitest with explicit test imports, build-first tests, a 20-second default
   timeout, and JUnit/coverage artifacts under `tmp/`.
 - Documentation is handwritten Markdown. Do not restore TypeDoc or generated API

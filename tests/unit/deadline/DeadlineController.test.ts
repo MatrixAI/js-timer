@@ -118,7 +118,9 @@ describe('independently owned deadline controller', () => {
     await observedLoser;
     now = 5;
     vi.advanceTimersByTime(5);
-    expect(late.signal.reason).toBeInstanceOf(errors.ErrorTimerDeadlineExceeded);
+    expect(late.signal.reason).toBeInstanceOf(
+      errors.ErrorTimerDeadlineExceeded,
+    );
     expect(winner.signal.aborted).toBe(false);
     loser.close();
     late.close();

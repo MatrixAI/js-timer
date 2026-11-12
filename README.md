@@ -290,15 +290,6 @@ input, second pin, local source override, or extra package lock. Credentials are
 not embedded in URLs or archives, and private artifacts must not be uploaded to
 a public binary cache without separate authority.
 
-For explicit local provider experiments,
-`npm run check:candidate -- /absolute/cancellation.tgz --browser` creates an
-isolated consumer with a generated dependency edge. Add
-`--lifecycle-root /absolute/async-init-checkout` after that checkout's
-packed-package check to exercise admission, race losers, timer cleanup, and
-service stop ordering. This optional lane preserves the lifecycle package's own
-locked dependency scopes. It is not the canonical dependency-selection or
-release gate, and its generated archive is not a release.
-
 ## Development
 
 Use Node.js 24 or newer. The [flake](flake.nix) provides integrated
@@ -315,19 +306,18 @@ nix run './.matrixai/matrixai-standards#skills-materializer' -- --standards-root
 npm install
 npm run lintfix
 npm run build
-npm run typecheck
-npm test -- --no-file-parallelism
-npm run check:portable
-npm run check
+npm test
+npm run lint
 ```
 
 Tests compile first and use Vitest against emitted modules, with explicit test
-imports and standard decorators. Arguments pass through `npm test`. JUnit is
+imports and standard decorators. All Node cases, including provider composition,
+are under `tests/unit` and run with `npm test`. Arguments pass through. JUnit is
 written under `tmp/junit`; optional V8/Cobertura coverage is produced with
-`npm test -- --no-file-parallelism --coverage`. Use `npm run lintfix` for active
-development and `npm run lint` for non-mutating verification. Documentation is
-handwritten at the repository root; there is no TypeDoc dependency, generated
-documentation directory, or installer test suite.
+`npm test -- --coverage`. Use `npm run lintfix` for active development and
+`npm run lint` for non-mutating verification. Documentation is handwritten at
+the repository root; there is no TypeDoc dependency, generated documentation
+directory, or installer test suite.
 
 ### Lint and formatting
 
@@ -383,15 +373,17 @@ their integrity-pinned tarballs. Hermetic installs use importNpmLock with its
 matching Node installation hook.
 
 The [check layout](nix/checks/default.nix) follows the container repository:
-routine `verify` and independent `lint` gates compose `default`, separate from
+routine `unit-js` and independent `lint` gates compose `default`, separate from
 `integration-browser` and its `runtime` aggregate. Checks call the same npm
 scripts without depending on the active development shell. Successful outputs
 retain `report.json` and artifacts.
 
-`npm run check:portable` rejects Node builtins in timer source and reports
-transitive builtins separately. It is not a browser execution claim.
-`npm run test:browser` attempts a Chromium document and dedicated-worker run
-against built timer modules without builtin aliases.
+The independent browser check runs TypeScript Playwright cases in a Chromium
+document and dedicated worker against a browser-targeted bundle of the built
+timer. It exercises the browser performance clock and host scheduling. Nix
+reuses the installed test dependencies and separately cached bundle; the bundle
+does not depend on test or specification files. Normal tests do not start a
+browser. These cases do not establish compatibility with every browser.
 
 See [verification evidence](VERIFICATION.md) for executed results. Consumer
 updates require a new authorized release/tag. Git-only releases do not publish
