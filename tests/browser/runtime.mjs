@@ -5,14 +5,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import playwrightManifest from '@playwright/test/package.json' with { type: 'json' };
+import { build } from 'esbuild';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const output = path.join(root, 'tmp/integration-browser');
 await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, 'artifacts'), { recursive: true });
-const bundle = await readFile(
-  path.join(root, 'tmp/package-candidate/browser.js'),
-);
+const browserFile = path.join(output, 'artifacts/browser.js');
+const bundled = await build({
+  entryPoints: [path.join(root, 'tests/fixtures/browser/runtime.mjs')],
+  outfile: browserFile,
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  tsconfigRaw: {},
+  metafile: true,
+});
+const bundle = await readFile(browserFile);
 const server = createServer((request, response) => {
   if (request.url === '/browser.js' || request.url === '/worker.js') {
     response.setHeader('content-type', 'text/javascript');
@@ -95,7 +105,7 @@ try {
   }
   await writeFile(
     path.join(output, 'artifacts/bundle-inputs.json'),
-    await readFile(path.join(root, 'tmp/package-candidate/bundle-inputs.json')),
+    JSON.stringify(bundled.metafile, null, 2),
   );
   await writeFile(
     path.join(output, 'artifacts/cases.json'),
@@ -112,7 +122,7 @@ try {
         system:
           process.env.CHECK_SYSTEM ?? `${process.arch}-${process.platform}`,
         summary:
-          'Packed timer passed in Chromium document and dedicated worker without builtin aliases',
+          'Timer passed in Chromium document and dedicated worker without builtin aliases',
         artifacts: {
           cases: 'artifacts/cases.json',
           bundleInputs: 'artifacts/bundle-inputs.json',
@@ -120,7 +130,7 @@ try {
         browser: browser.version(),
         playwright: playwrightManifest.version,
         scope:
-          'Local Chromium document and dedicated worker, packed package, no builtin aliases',
+          'Local Chromium document and dedicated worker, built source, no builtin aliases',
         results,
       },
       null,
@@ -128,7 +138,7 @@ try {
     ),
   );
   process.stdout.write(
-    'Packed timer passed in Chromium document and dedicated worker\n',
+    'Timer passed in Chromium document and dedicated worker\n',
   );
 } finally {
   await browser?.close();

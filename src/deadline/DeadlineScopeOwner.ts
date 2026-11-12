@@ -2,12 +2,12 @@ import type {
   ContextBodyExit,
   ContextDeadlineConstraint,
 } from '@matrixai/contexts';
-import type { DeadlineContext } from './types.js';
+import type { DeadlineContext } from '../types.js';
 import { bracketResource } from '@matrixai/contexts';
 import { CancellationController } from '@matrixai/async-cancellable';
-import Timer from './Timer.js';
-import { readClock } from './clock.js';
-import { ErrorTimerDeadlineExceeded } from './errors.js';
+import Timer from '../Timer.js';
+import { readClock } from '../utils.js';
+import { ErrorTimerDeadlineExceeded } from '../errors.js';
 
 /** Owns one deadline scope invocation's controller, scheduler, monitor and release. */
 class DeadlineScopeOwner {

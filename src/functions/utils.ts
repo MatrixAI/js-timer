@@ -1,5 +1,6 @@
 import type { ContextFunction, ContextTransform } from '@matrixai/contexts';
 import type { ContextFunctionCheck } from '@matrixai/contexts/functions/index.js';
+import type { DeadlineInput } from '../types.js';
 import type {
   TimingFunctionCheck,
   TimingKind,
@@ -7,13 +8,22 @@ import type {
   TimingOptions,
   TimingResult,
 } from './types.js';
-import type SynchronousDeadlineOwner from '../SynchronousDeadlineOwner.js';
 import {
+  bracketResource,
   ResourceOwningAsyncGenerator,
   scopeContextFunction,
 } from '@matrixai/contexts';
-import { acquireTiming } from './invocation.js';
-import { createTimeoutScope } from '../deadline.js';
+import {
+  CancellationController,
+  PromiseCancellable,
+} from '@matrixai/async-cancellable';
+import SynchronousDeadlineOwner from '../deadline/SynchronousDeadlineOwner.js';
+import { readClock } from '../utils.js';
+import {
+  constrainDeadline,
+  createTimeoutScope,
+  timerClock,
+} from '../deadline/index.js';
 
 /** An invocation-local finite time budget around represented async completion. */
 function timedAsync<
@@ -251,4 +261,98 @@ function releaseGeneratorTiming(
   }
 }
 
-export { timed, timedAsync };
+/** Snapshot supported context data before acquiring any parent link. */
+function snapshotContext(
+  value: unknown,
+): DeadlineInput & Record<PropertyKey, unknown> {
+  if (
+    value == null ||
+    typeof value !== 'object' ||
+    (Object.getPrototypeOf(value) !== Object.prototype &&
+      Object.getPrototypeOf(value) !== null)
+  ) {
+    throw new TypeError(
+      'ContextScope projection requires an ordinary data record',
+    );
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+    if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError(
+        'ContextScope projection requires enumerable own data fields',
+      );
+    }
+  }
+  return { ...value };
+}
+
+function acquireTiming<
+  This,
+  Args extends unknown[],
+  Position extends number | 'last',
+  Kind extends TimingKind,
+>(
+  receiver: This,
+  args: Args,
+  index: number,
+  options: TimingOptions<Position, This, Args, Kind>,
+): { owner: SynchronousDeadlineOwner; args: Args } {
+  const outer = snapshotContext(args[index]);
+  const duration =
+    typeof options.duration === 'function'
+      ? options.duration.apply(receiver, args)
+      : options.duration;
+  if (!Number.isFinite(duration) || duration < 0) {
+    throw new RangeError('A timeout duration must be finite and nonnegative');
+  }
+  const clock = options.clock ?? timerClock;
+  const deadline = constrainDeadline(
+    { clock, at: readClock(clock) + duration },
+    outer.deadline,
+  );
+  const owner = new SynchronousDeadlineOwner(deadline, outer.signal);
+  const forwarded: unknown[] = [...args];
+  forwarded[index] = { ...outer, deadline, signal: owner.signal };
+  return { owner, args: forwarded as Args };
+}
+
+/** Local cancellation requests retain the timed body's actual completion. */
+function timedCancellable<
+  This,
+  Args extends unknown[],
+  Result,
+  const Position extends number | 'last',
+>(
+  operation: ContextFunction<This, Args, Result> &
+    TimingFunctionCheck<Args, Position>,
+  options: Omit<TimingOptions<Position, This, Args>, 'kind'>,
+): (this: This, ...args: Args) => PromiseCancellable<Result> {
+  const timedOperation = timedAsync(operation, { ...options, kind: 'async' });
+  function wrapped(this: This, ...args: Args): PromiseCancellable<Result> {
+    const index =
+      typeof options.context === 'number' ? options.context : args.length - 1;
+    if (index < 0 || index >= args.length) {
+      throw new RangeError('The selected context argument is missing');
+    }
+    const snapshot = snapshotContext(args[index]);
+    const controller = new CancellationController(snapshot.signal);
+    const forwarded: unknown[] = [...args];
+    forwarded[index] = { ...snapshot, signal: controller.signal };
+    const completion = bracketResource(
+      () => controller,
+      () => timedOperation.apply(this, forwarded as Args),
+      (owned) => owned.close(),
+    );
+    return PromiseCancellable.from(completion, {
+      policy: 'request-only',
+      controller,
+    }) as PromiseCancellable<Result>;
+  }
+  Object.defineProperty(wrapped, 'name', {
+    value: operation.name,
+    configurable: true,
+  });
+  return wrapped;
+}
+
+export { timed, timedCancellable };

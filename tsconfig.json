@@ -33,6 +33,5 @@
     "./*.mjs",
     "./*.mts",
     "./benches/**/*"
-  ],
-  "exclude": ["./tests/fixtures/package/types.ts"]
+  ]
 }

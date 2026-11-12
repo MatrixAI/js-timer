@@ -1,3 +1,26 @@
+import type {
+  ContextDeadlineClock,
+  ContextFunction,
+  ContextFunctionOptions,
+  ContextScope,
+  ContextTransform,
+} from '@matrixai/contexts';
+import { scopeContextFunction, scopeContextMethod } from '@matrixai/contexts';
+
+type Incompatible<Context, Provided> = Context extends unknown
+  ? {
+      [
+        Key in keyof Context & keyof Provided
+      ]: Provided[Key] extends Context[Key] ? never : Key;
+    }[keyof Context & keyof Provided]
+  : never;
+
+type FacadeCompatibility<Context, Needs, Provided> = [Context] extends [Needs]
+  ? [Incompatible<Context, Provided>] extends [never]
+    ? unknown
+    : never
+  : never;
+
 /** Normalize numeric delays to the host timeout range, retaining infinity. */
 function normalizeDelay(delay: number): number {
   if (Number.isNaN(delay)) return 0;
@@ -21,4 +44,89 @@ function earlierDeadline(parent: number, next: number): number {
   return Math.min(parent, next);
 }
 
-export { normalizeDelay, remainingTime, monotonicTimestamp, earlierDeadline };
+/** Shared portable epoch clock with weakly monotonic module-local state. */
+const timestampNow = (() => {
+  let lastTimestamp = -Infinity;
+  return (): number => {
+    let timestamp: number | undefined;
+    try {
+      const performance = globalThis.performance;
+      if (
+        performance != null &&
+        typeof performance.timeOrigin === 'number' &&
+        typeof performance.now === 'function'
+      ) {
+        const candidate = performance.timeOrigin + performance.now();
+        if (Number.isFinite(candidate) && Math.abs(candidate) <= 8.64e15) {
+          timestamp = candidate;
+        }
+      }
+    } catch {
+      // Restricted hosts may expose throwing getters or an unusable clock.
+    }
+    timestamp ??= Date.now();
+    lastTimestamp = monotonicTimestamp(lastTimestamp, timestamp);
+    return lastTimestamp;
+  };
+})();
+
+/** Read and validate an externally supplied clock at the timing boundary. */
+function readClock(clock: ContextDeadlineClock): number {
+  const now = clock.now();
+  if (!Number.isFinite(now)) {
+    throw new TypeError('Clock readings must be finite');
+  }
+  return now;
+}
+
+/**
+ * Adapt one timing scope to signature-preserving functions and standard methods.
+ * The context argument remains part of the public signature; optional provider
+ * fields let callers omit capabilities that the scope supplies. Use the scope
+ * directly when requirements must be removed from an operation's input type.
+ * The supplied scope owns acquisition and release for each invocation.
+ */
+function createTimingFacades<Context extends object>() {
+  return function <Needs extends object, Provided extends object>(
+    scope: ContextScope<Needs, Provided> &
+      FacadeCompatibility<Context, Needs, Provided>,
+  ) {
+    // The compatibility check rejects stronger overlapping fields. The scope
+    // itself performs record validation, projection, and all resource ownership.
+    const transform = scope as unknown as ContextTransform<Context, Context>;
+    return {
+      function<
+        This,
+        Args extends unknown[],
+        Result,
+        const Position extends number | 'last',
+      >(
+        operation: Parameters<
+          typeof scopeContextFunction<Context, This, Args, Result, Position>
+        >[0],
+        options: ContextFunctionOptions<Position>,
+      ): ContextFunction<This, Args, Result> {
+        return scopeContextFunction<Context, This, Args, Result, Position>(
+          operation,
+          transform,
+          options,
+        );
+      },
+      method<const Position extends number | 'last'>(
+        options: ContextFunctionOptions<Position>,
+      ) {
+        return scopeContextMethod<Context, Position>(transform, options);
+      },
+    };
+  };
+}
+
+export {
+  createTimingFacades,
+  normalizeDelay,
+  remainingTime,
+  monotonicTimestamp,
+  earlierDeadline,
+  timestampNow,
+  readClock,
+};

@@ -3,8 +3,7 @@
   "root": ".",
   "domains": {
     "eslint": {
-      "tsconfigPaths": ["./tsconfig.json"],
-      "excludeTargets": ["tests/fixtures/package/types.ts"]
+      "tsconfigPaths": ["./tsconfig.json"]
     },
     "markdown": {
       "targets": ["*.{md,mdx}", "[!.]*/**/*.{md,mdx}"],

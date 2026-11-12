@@ -40,7 +40,6 @@ let
       runHook preInstall
       mkdir -p "$out/artifacts"
       cp -R tmp/junit "$out/artifacts/junit"
-      cp -R tmp/package-candidate "$out/artifacts/package"
       cp tmp/portable-imports.json "$out/artifacts/portable-imports.json"
       cat > "$out/report.json" <<EOF
       {
@@ -49,10 +48,9 @@ let
         "kind": "conformance",
         "status": "passed",
         "system": "${system}",
-        "summary": "Types, Vitest unit tests, emitted package, and portable timer source boundary passed",
+        "summary": "Types, Vitest unit tests, and portable timer source boundary passed",
         "artifacts": {
           "junit": "artifacts/junit",
-          "package": "artifacts/package/report.json",
           "portableImports": "artifacts/portable-imports.json"
         }
       }

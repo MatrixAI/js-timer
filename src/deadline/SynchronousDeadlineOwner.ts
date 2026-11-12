@@ -1,7 +1,7 @@
 import type { ContextDeadlineConstraint } from '@matrixai/contexts';
 import { CancellationController } from '@matrixai/async-cancellable';
-import { readClock } from './clock.js';
-import { ErrorTimerDeadlineExceeded } from './errors.js';
+import { readClock } from '../utils.js';
+import { ErrorTimerDeadlineExceeded } from '../errors.js';
 
 /** Synchronously releasable scheduler and link for caller-driven work. */
 class SynchronousDeadlineOwner {

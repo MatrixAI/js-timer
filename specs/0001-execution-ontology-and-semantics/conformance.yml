@@ -55,8 +55,7 @@ records:
       - CASE-TIMER-DEADLINE-WAKEUP
       - CASE-TIMER-TIMEOUT-ORDER
     sources:
-      - ../../tests/deadline.test.ts
-      - ../../tests/fixtures/package/types.ts
+      - ../../tests/deadline/index.test.ts
   - id: REQ-TIMER-OWNERSHIP-001
     spec: adr.md#REQ-TIMER-OWNERSHIP-001
     evidenceStatus: partial
@@ -70,7 +69,7 @@ records:
       - CASE-TIMER-DEADLINE-MONITOR-SUPPRESSION
     sources:
       - ../../tests/context.test.ts
-      - ../../tests/deadline.test.ts
+      - ../../tests/deadline/index.test.ts
   - id: REQ-TIMER-COMPOSITION-001
     spec: adr.md#REQ-TIMER-COMPOSITION-001
     evidenceStatus: partial
@@ -82,7 +81,7 @@ records:
       - CASE-PROVIDERS-LIFECYCLE-STOP
     sources:
       - ../../tests/context.test.ts
-      - ../../tests/deadline.test.ts
+      - ../../tests/deadline/index.test.ts
       - ../../tests/fixtures/browser/runtime.mjs
       - ../../tests/fixtures/providers/lifecycle.mjs
     limitations:
@@ -96,7 +95,7 @@ records:
       - CASE-TIMER-COMPLETION-WAIT
     sources:
       - ../../tests/context.test.ts
-      - ../../tests/deadline.test.ts
+      - ../../tests/deadline/index.test.ts
       - ../../tests/completion.test.ts
   - id: REQ-EXEC-FAILURES-001
     spec: adr.md#REQ-EXEC-FAILURES-001
@@ -107,4 +106,4 @@ records:
       - CASE-TIMER-DEADLINE-MONITOR-SUPPRESSION
     sources:
       - ../../tests/context.test.ts
-      - ../../tests/deadline.test.ts
+      - ../../tests/deadline/index.test.ts

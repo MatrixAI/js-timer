@@ -200,6 +200,58 @@ Applications use these scope factories directly; they do not construct the
 internal deadline execution owner. The default deadline clock and standalone
 timers share one private, weakly monotonic clock per loaded module instance.
 
+### Independently owned deadlines
+
+`DeadlineController` extends `CancellationController`, and is therefore also a
+native `AbortController`. Use it when a service or retry manager must own one
+fixed deadline independently of any single operation. A relative duration starts
+at construction; an optional parent deadline narrows it only when clock
+identities match. Consumers borrow the controller's `deadline` and `signal`.
+
+```ts
+import { bracketResource } from '@matrixai/contexts';
+import { DeadlineController } from '@matrixai/timer';
+
+const results = await bracketResource(
+  () => new DeadlineController({ duration: 5_000 }),
+  async (controller) => {
+    const context = {
+      deadline: controller.deadline,
+      signal: controller.signal,
+    };
+    const first = Promise.resolve().then(() => attemptOne(context));
+    const second = Promise.resolve().then(() => attemptTwo(context));
+    return Promise.allSettled([first, second]);
+  },
+  async (controller) => {
+    let closeFailed = false;
+    let closeFailure: unknown;
+    try {
+      controller.close();
+    } catch (reason) {
+      closeFailed = true;
+      closeFailure = reason;
+    }
+    const monitoring = await controller.monitoring;
+    if (monitoring.status === 'rejected') {
+      if (closeFailed)
+        throw new SuppressedError(closeFailure, monitoring.reason);
+      throw monitoring.reason;
+    }
+    if (closeFailed) throw closeFailure;
+  },
+);
+```
+
+The attempt promises must represent their work and cleanup. Expiry or upstream
+abort requests cancellation; neither joins work nor closes links. `close()`
+synchronously disables forwarding and scheduling without aborting the signal;
+failed cleanup can be retried. The non-rejecting `monitoring` promise reports
+scheduler failure separately from close failures, including a failure after a
+reentrant close. `monitoringState` allows synchronous inspection but cannot wait
+for an entered callback. The wildcard package exports do not enforce privacy for
+the internal deadline owners.
+
 ## Portable clock and host timers
 
 Timer source uses the global Performance API when usable, with a synchronous
@@ -265,7 +317,6 @@ npm run lintfix
 npm run build
 npm run typecheck
 npm test -- --no-file-parallelism
-npm run check:package
 npm run check:portable
 npm run check
 ```
@@ -284,9 +335,7 @@ MatrixAI lint comes from the selected public nixpkgs-matrixai package set, not
 an npm dependency or a direct js-lint flake input. One configured tool
 environment is shared by the development shell, flake formatter, and independent
 hermetic lint check. The bundled CLI owns configuration; TypeScript remains a
-consumer development dependency. The packaged-consumer type fixture is compiled
-independently by `npm run check:package`, not against the main lint TypeScript
-project.
+consumer development dependency.
 
 ```sh
 nix fmt
@@ -339,12 +388,10 @@ routine `verify` and independent `lint` gates compose `default`, separate from
 scripts without depending on the active development shell. Successful outputs
 retain `report.json` and artifacts.
 
-`npm run check:package` inspects a packed consumer reconstructed from the
-lockfile-installed runtime dependency tree; it does not test npm installation.
 `npm run check:portable` rejects Node builtins in timer source and reports
 transitive builtins separately. It is not a browser execution claim.
-`npm run test:browser` attempts a real packed-package Chromium document and
-dedicated-worker run without aliases.
+`npm run test:browser` attempts a Chromium document and dedicated-worker run
+against built timer modules without builtin aliases.
 
 See [verification evidence](VERIFICATION.md) for executed results. Consumer
 updates require a new authorized release/tag. Git-only releases do not publish

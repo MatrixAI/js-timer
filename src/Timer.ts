@@ -5,8 +5,7 @@ import {
   PromiseCancellable,
 } from '@matrixai/async-cancellable';
 import { ErrorTimerEnded } from './errors.js';
-import { timestampNow } from './clock.js';
-import { normalizeDelay, remainingTime } from './utils.js';
+import { normalizeDelay, remainingTime, timestampNow } from './utils.js';
 
 /**
  * Uses the host's native timeout and interval handles.

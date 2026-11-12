@@ -1,5 +1,5 @@
 import type { ContextOperation } from '@matrixai/contexts';
-import type { DeadlineContext } from '#deadline.js';
+import type { DeadlineContext } from '#index.js';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   Timer,
@@ -18,7 +18,7 @@ function deferred<T = void>() {
   return { promise, resolve };
 }
 
-describe('clock-aware deadline participation', () => {
+describe('deadline scopes and constraints', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();

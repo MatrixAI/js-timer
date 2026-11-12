@@ -8,11 +8,10 @@ import type {
   DeadlineContext,
   DeadlineInput,
   TimeoutScopeOptions,
-} from './types.js';
+} from '../types.js';
 import { createContextScope } from '@matrixai/contexts';
 import DeadlineScopeOwner from './DeadlineScopeOwner.js';
-import { readClock, timestampNow } from './clock.js';
-import { earlierDeadline } from './utils.js';
+import { earlierDeadline, readClock, timestampNow } from '../utils.js';
 
 /** Stable identity for this module instance's portable epoch-millisecond clock. */
 const timerClock: ContextDeadlineClock = Object.freeze({ now: timestampNow });

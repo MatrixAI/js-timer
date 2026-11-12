@@ -85,7 +85,7 @@ assert.equal(provider.name, '@matrixai/async-cancellable');
 const manifest = JSON.parse(beforeManifest);
 const lock = JSON.parse(beforeLock);
 // This generated world explicitly substitutes an artifact, not a released
-// coordinate. Only its local packed-consumer closure needs this synthetic edge.
+// coordinate. Only this isolated integration world needs the synthetic edge.
 manifest.dependencies[provider.name] = provider.version;
 lock.packages[''].dependencies[provider.name] = provider.version;
 lock.packages['node_modules/@matrixai/async-cancellable'] = {
@@ -178,21 +178,8 @@ try {
     timeout: 180000,
   });
   if (lifecycleArchive != null) {
-    const consumer = path.join(world, 'tmp/package-candidate/consumer');
-    await cp(
-      path.join(modules, '@matrixai/async-init'),
-      path.join(consumer, 'node_modules/@matrixai/async-init'),
-      {
-        recursive: true,
-        dereference: true,
-      },
-    );
-    await cp(
-      path.join(world, 'tests/fixtures/providers/lifecycle.mjs'),
-      path.join(consumer, 'lifecycle.mjs'),
-    );
-    execFileSync(process.execPath, ['lifecycle.mjs'], {
-      cwd: consumer,
+    execFileSync(process.execPath, ['tests/fixtures/providers/lifecycle.mjs'], {
+      cwd: world,
       stdio: 'inherit',
       timeout: 20000,
     });

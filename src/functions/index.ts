@@ -1,3 +1,2 @@
-export { timed } from './timed.js';
-export { timedCancellable } from './timedCancellable.js';
+export { timed, timedCancellable } from './utils.js';
 export type { TimingKind, TimingOptions } from './types.js';

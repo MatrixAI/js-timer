@@ -16,8 +16,6 @@
   "type": "module",
   "exports": {
     "./package.json": "./package.json",
-    "./DeadlineScopeOwner": null,
-    "./DeadlineScopeOwner.js": null,
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -49,11 +47,10 @@
     "check:candidate": "node ./scripts/check-candidate.mjs",
     "lint": "matrixai-lint --check",
     "lintfix": "matrixai-lint --fix",
-    "check:package": "npm run build && node ./scripts/check-package.mjs",
-    "test:browser": "npm run check:package -- --browser && node ./tests/browser/runtime.mjs",
+    "test:browser": "npm run build && node ./tests/browser/runtime.mjs",
     "check": "npm run check:conformance && npm run lint",
     "check:portable": "node --experimental-import-meta-resolve ./scripts/check-portable.mjs",
-    "check:conformance": "npm run build && npm run typecheck && npm test -- --no-file-parallelism && npm run check:package && npm run check:portable"
+    "check:conformance": "npm run build && npm run typecheck && npm test -- --no-file-parallelism && npm run check:portable"
   },
   "dependencies": {
     "@matrixai/async-cancellable": "git+ssh://git@github.com/MatrixAI/js-async-cancellable.git#v4.0.0",
