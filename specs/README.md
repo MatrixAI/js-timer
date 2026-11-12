@@ -7,6 +7,9 @@
 - [Scoped deadlines and timing](0003-scoped-deadlines-and-timing/adr.md) defines
   fixed constraints, timeout budgets, owned timing scopes, and their function
   and method facades.
+- [Independently owned deadline controller](0005-deadline-controller/adr.md)
+  defines a public deadline and cancellation mechanism with a lifetime
+  independent of any one scope.
 
 Acceptance establishes timer-owned intent, not implementation verification,
 provider compatibility, or release authority. Requirement and evidence status
@@ -18,10 +21,6 @@ are separate. Planned tests and historical receipts are not current proof.
   proposes named timing and combined cancellation forms, including synchronous
   calls and caller-driven generators. Its requirement-level supersession of the
   current facade clause is conditional on acceptance.
-- [Independently owned deadline controller](0005-deadline-controller/adr.md)
-  proposes a public deadline and cancellation mechanism with a lifetime
-  independent of any one scope, including explicit monitoring and release
-  semantics.
 
 ## Historical decisions
 
@@ -39,8 +38,9 @@ candidate results do not establish current installed-provider integration,
 browser portability, or Nix package-consumer conformance.
 
 The current
-[execution requirements](0002-timer-execution-and-completion/requirements.yml)
-and [timing requirements](0003-scoped-deadlines-and-timing/requirements.yml)
+[execution requirements](0002-timer-execution-and-completion/requirements.yml),
+[timing requirements](0003-scoped-deadlines-and-timing/requirements.yml),
+and [controller requirements](0005-deadline-controller/requirements.yml)
 index accepted clauses. Their attached case inventories are planned, not proof
 of execution. The historical candidate receipt remains unchanged and applies
 only to the candidate it identifies.
@@ -51,6 +51,7 @@ only to the candidate it identifies.
 | --------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | Timer execution and waits   | [Timer](../src/Timer.ts)                    | [Timer cases](../tests/Timer.test.ts), [completion cases](../tests/completion.test.ts)              | Unassessed against current provider APIs        |
 | Fixed and relative timing   | [Deadline source](../src/deadline/utils.ts) | [Deadline cases](../tests/deadline/index.test.ts)                                                   | Unassessed against active requirements          |
+| Independent controller      | [Controller](../src/deadline/DeadlineController.ts) | [Controller cases](../tests/deadline/DeadlineController.test.ts)                           | Requirement-level assessment pending            |
 | Owned timer scope           | [Scope source](../src/context.ts)           | [Scope cases](../tests/context.test.ts)                                                             | Unassessed against active requirements          |
 | Function and method facades | [Scope facade factory](../src/utils.ts)     | [Facade cases](../tests/facades.test.ts), [named authoring cases](../tests/functions/index.test.ts) | Named policies and protocol coverage unassessed |
 | Runtime boundaries          | [Package entry](../src/index.ts)            | [Browser fixtures](../tests/fixtures/browser/runtime.mjs)                                           | Current released-provider graph not assessed    |

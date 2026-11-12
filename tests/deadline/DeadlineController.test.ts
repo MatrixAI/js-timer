@@ -87,6 +87,46 @@ describe('independently owned deadline controller', () => {
     controller.close();
   });
 
+  test('CASE-CONTROLLER-FANOUT: shared negotiation budget permits loser cancellation and explicit winner handoff', async () => {
+    let now = 0;
+    const controller = new DeadlineController({
+      duration: 5,
+      clock: { now: () => now },
+    });
+    const loser = new CancellationController(controller.signal);
+    const winner = new CancellationController();
+    const detachWinner = winner.link(controller.signal);
+    let finishLoser!: () => void;
+    const loserCompletion = new Promise<void>((resolve) => {
+      finishLoser = resolve;
+    });
+    let loserFinished = false;
+    const observedLoser = loserCompletion.then(() => {
+      loserFinished = true;
+    });
+    const reason = { superseded: true };
+    loser.abort(reason);
+    expect(loser.signal.reason).toBe(reason);
+    expect(controller.signal.aborted).toBe(false);
+    expect(winner.signal.aborted).toBe(false);
+    expect(loserFinished).toBe(false);
+    detachWinner();
+    now = 3;
+    const late = new CancellationController(controller.signal);
+    expect(controller.deadline.at).toBe(5);
+    finishLoser();
+    await observedLoser;
+    now = 5;
+    vi.advanceTimersByTime(5);
+    expect(late.signal.reason).toBeInstanceOf(errors.ErrorTimerDeadlineExceeded);
+    expect(winner.signal.aborted).toBe(false);
+    loser.close();
+    late.close();
+    controller.close();
+    winner.close();
+    expect((await controller.monitoring).status).toBe('fulfilled');
+  });
+
   test('validates constraints and clock identity before linking', () => {
     const clock = { now: () => 2 };
     const parent = new AbortController();

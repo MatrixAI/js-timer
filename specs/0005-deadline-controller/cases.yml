@@ -1,0 +1,28 @@
+version: 1
+role: planned-case-inventory
+normative_source: adr.md
+execution_status: not-assessed
+test_inputs:
+  - ../../tests/deadline/DeadlineController.test.ts
+  - ../../tests/deadline/DeadlineController.test-d.ts
+cases:
+  - id: CASE-CONTROLLER-CAPABILITIES
+    intent: Check native identity, stable borrowed capabilities, and independently owned lifetime.
+  - id: CASE-CONTROLLER-FANOUT
+    intent: Share a fixed budget across independently started work; cancel losers, retain cleanup, and hand off the winner.
+    test: ../../tests/deadline/DeadlineController.test.ts
+    assessment_status: partial
+  - id: CASE-CONTROLLER-BOUNDS
+    intent: Verify fixed bounds, narrowing, clock identity, invalid input, and captured immutable values.
+  - id: CASE-CONTROLLER-EXPIRY
+    intent: Verify expiry requests cancellation without completing work, including expired and early-wakeup cases.
+  - id: CASE-CONTROLLER-LINKS
+    intent: Exercise directional links, pre-aborted parents, dynamic detach, local abort, and reason identity.
+  - id: CASE-CONTROLLER-RELEASE
+    intent: Verify logical closure, independent links, retryable cleanup, and no implicit cancellation or join.
+  - id: CASE-CONTROLLER-MONITOR
+    intent: Observe wakeup, scheduler, reentrant, monitor, and separate cleanup failure roles.
+  - id: CASE-CONTROLLER-ADAPTERS
+    intent: Review protocol-specific completion and failure boundaries wherever controller reuse is claimed.
+  - id: CASE-CONTROLLER-PUBLIC-REVIEW
+    intent: Review public contract, consumers, native compatibility, and wildcard reachability before publication.

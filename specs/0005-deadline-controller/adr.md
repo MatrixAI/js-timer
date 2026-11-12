@@ -1,14 +1,14 @@
 ---
 title: Independently owned deadline controller
 description: >-
-  A proposed public deadline controller with a lifetime independent of one scope
+  A public deadline controller with a lifetime independent of one scope
   invocation, explicit cancellation signaling, and owned release.
 type: adr
 category: architecture
 tags: [timer, deadline, cancellation, ownership, composition]
-status: proposed
+status: accepted
 created: 2026-11-11
-updated: 2026-11-11
+updated: 2026-11-12
 author: Matrix AI
 project: js-timer
 technologies: [TypeScript, JavaScript, Node.js]
@@ -19,10 +19,9 @@ audience: [developers, maintainers]
 
 ## Status
 
-Proposed for review. The requirements below are targets, not statements that the
-candidate implementation satisfies them. A controller is present in the current
-unreleased package; acceptance, conformance evidence, and release authority are
-separate from its implementation.
+Accepted. The active requirements define the independent deadline controller's
+public contract. Acceptance does not assert implementation conformance, complete
+evidence, or release authority; those are separate assessments.
 
 ## Context
 
@@ -57,7 +56,7 @@ Contexts does not require a timer implementation, controller class, or automatic
 resource ownership. Timer's accepted
 [execution decision](../0002-timer-execution-and-completion/adr.md) and
 [deadline decision](../0003-scoped-deadlines-and-timing/adr.md) remain binding;
-this proposed record does not supersede them.
+this record does not supersede them.
 
 ### One total budget across independent attempts
 
@@ -87,7 +86,7 @@ work, or release when any one attempt finishes. A manager can choose sequential
 or concurrent attempts; it must observe the represented completion and cleanup
 that its own release policy depends on.
 
-The following TypeScript-like example uses the candidate controller API. The
+The following TypeScript-like example uses the controller API. The
 release helper is illustrative application code. `bracketResource` is the
 existing contexts bracket. The attempt functions and parent context belong to
 the application. The release helper below preserves distinct monitoring and
@@ -140,16 +139,42 @@ controller could instead be retained as a field by a session and released at the
 end of the session's own lifecycle. Its consumers borrow its capabilities and do
 not acquire authority to release it.
 
+### ICE negotiation and independent fan-out
+
+An ICE negotiation coordinator can own a single five-second deadline while
+candidate-pair checks, signaling, retries, and relay-related work begin at
+different times. A check started after three seconds inherits the original bound,
+not a fresh five-second budget. A per-attempt budget can narrow that bound, but
+only when both constraints use the same clock identity. This scenario illustrates
+application ownership; it does not prescribe ICE nomination or transport policy.
+
+The deadline controller requests cancellation of participating checks on expiry.
+It does not select a winning candidate, track tasks, join their completion, or
+transfer a connection. A coordinator can link a separate cancellation controller
+for each attempt to the shared signal. When its own selection policy identifies a
+winner, it can request cancellation of the losers individually and observe their
+actual completion and cleanup. Aborting the shared signal instead would also
+request cancellation of a winner that still observes it. The coordinator must
+explicitly hand off the selected connection, its cancellation relationships,
+and other required resources to their next owner.
+
+An asynchronous scope can instead represent the entire negotiation, even when
+the body runs concurrently or awaits callbacks. It must retain the completion
+and cleanup of work it owns. A body that returns early after finding a winner
+does not automatically join detached losers. The independent controller is most
+useful when the session or manager owns a budget across independently initiated
+operations, not merely because those operations happen to run concurrently.
+
 ### Constraint, controller, timer, and scope
 
 | Concept                      | Responsibility                                                                                                                      |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Fixed deadline               | Describes an absolute bound and its clock; does not itself schedule or request cancellation.                                        |
-| Proposed deadline controller | Owns enforcement resources and supplies a deadline and signal to independent consumers.                                             |
+| Deadline controller          | Owns enforcement resources and supplies a deadline and signal to independent consumers.                                             |
 | Timer                        | Owns a scheduled timer execution and, when present, its handler completion; expiry is not automatically an abort of unrelated work. |
 | Deadline scope               | Runs represented work with timing capabilities and retains its own required completion and release obligations.                     |
 
-The proposed controller is not a task group, execution join, timer replacement,
+The controller is not a task group, execution join, timer replacement,
 or proof of timely completion. Sharing its signal does not transfer authority to
 abort or close it. A scope may acquire a controller internally, but it must
 still retain represented body work and required cleanup. A reusable controller
@@ -226,7 +251,7 @@ completion. Consumer scenarios and failure cases require review before release.
 
 ## Decision
 
-Propose option 3 for review: define a provider-owned deadline enforcement
+Select option 3: define a provider-owned deadline enforcement
 controller that can be owned independently of one scope invocation. Expose it
 from the package root as `DeadlineController`. It supplies one fixed deadline
 and one observation signal while owning its scheduler and cancellation links. It
@@ -249,15 +274,14 @@ own resources without aborting the signal, and keep local `abort()` usable after
 close. Monitoring and release failures remain observable under the requirements
 below, including when close is reentrant.
 
-These are concrete proposed choices, not changes to accepted requirements. They
-do not establish that the current owner classes can be replaced without
+These choices do not establish that the current owner classes can be replaced without
 protocol-specific evidence. A separately reviewed async scope or synchronous
 generator adapter may still be needed to preserve its completion contract.
 
-### Proposed public shape
+### Public shape
 
-This declaration specifies the proposed interface implemented by the current
-candidate. It follows the existing named package-root export convention.
+This declaration specifies the interface. It follows the existing named
+package-root export convention.
 
 ```typescript
 import type {
@@ -308,7 +332,7 @@ observe monitoring as well as attempt close when both failure channels matter.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-001 - Independent owner and capabilities
 
-Requirement status: target. Level: MUST. Verification: API and runtime cases.
+Requirement status: active. Level: MUST. Verification: API and runtime cases.
 Evidence status: unevidenced.
 
 The package MUST expose `DeadlineController` and its two supporting types as
@@ -323,7 +347,7 @@ be an `AbortController` instance, and MUST NOT be thenable.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-002 - Fixed bounds and clock compatibility
 
-Requirement status: target. Level: MUST. Verification: deterministic clock
+Requirement status: active. Level: MUST. Verification: deterministic clock
 cases. Evidence status: unevidenced.
 
 The constructor MUST accept exactly one of a finite absolute `deadline` or a
@@ -340,7 +364,7 @@ reset or refresh operation is provided.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-003 - Expiry is a request
 
-Requirement status: target. Level: MUST. Verification: controlled execution
+Requirement status: active. Level: MUST. Verification: controlled execution
 cases. Evidence status: unevidenced.
 
 When active monitoring observes the effective bound, the controller MUST abort
@@ -355,7 +379,7 @@ promise a hard real-time completion bound.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-004 - Directional borrowed inputs
 
-Requirement status: target. Level: MUST. Verification: cancellation and race
+Requirement status: active. Level: MUST. Verification: cancellation and race
 cases. Evidence status: unevidenced.
 
 The optional upstream `signal` and subsequently attached `link(signal)` inputs
@@ -372,7 +396,7 @@ release a borrowed timer merely because one is present in a context.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-005 - Owned scheduler and release
 
-Requirement status: target. Level: MUST. Verification: resource lifetime cases.
+Requirement status: active. Level: MUST. Verification: resource lifetime cases.
 Evidence status: unevidenced.
 
 `close()` MUST synchronously disable future scheduling and upstream forwarding,
@@ -394,7 +418,7 @@ operations.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-006 - Scheduler and failure observation
 
-Requirement status: target. Level: MUST. Verification: failure and scheduler
+Requirement status: active. Level: MUST. Verification: failure and scheduler
 cases. Evidence status: unevidenced.
 
 The controller MUST recheck its selected clock after every scheduler wakeup and
@@ -428,7 +452,7 @@ resources under the same failure-role policy.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-007 - Integration preserves boundaries
 
-Requirement status: target. Level: MUST. Verification: scope, protocol, and
+Requirement status: active. Level: MUST. Verification: scope, protocol, and
 consumer cases. Evidence status: unevidenced.
 
 If a scope or facade uses the controller, it MUST preserve the applicable
@@ -446,7 +470,7 @@ early-abandonment waiter MUST NOT be used as represented consumer completion.
 
 ### REQ-TIMER-DEADLINE-CONTROLLER-008 - Publication and compatibility review
 
-Requirement status: target. Level: MUST. Verification: API and runtime review.
+Requirement status: active. Level: MUST. Verification: API and runtime review.
 Evidence status: unevidenced.
 
 Before publication, the provider MUST specify and review the controller's public
@@ -507,14 +531,15 @@ facade must retain a separate implementation if its completion proof fails.
 ### Neutral
 
 - `Timer` remains a separately useful public scheduling and execution object.
-- This proposal does not decide directory layout or utility-module policy.
+- This decision does not prescribe directory layout or utility-module policy.
 - A scope remains an appropriate way to bind ownership to represented work.
 
 ## Decision Outcome
 
-Option 3 and the concrete interface above are proposed, not accepted. Review the
-independent consumer use case and protocol-specific failure and cleanup
-boundaries before treating the candidate as an accepted public contract.
+Option 3 is accepted. The independent controller owns deadline enforcement and
+cancellation links, while consumers and their coordinators retain responsibility
+for represented work, cleanup, and any handoff. Reuse by other protocols remains
+conditional on preserving their own ownership and failure boundaries.
 
 ## Related Decisions
 
@@ -531,10 +556,14 @@ boundaries before treating the candidate as an accepted public contract.
 
 ## More Information
 
-Existing scope and facade tests are review inputs. The candidate includes
+Existing scope and facade tests are review inputs. The implementation includes
 [controller runtime cases](../../tests/deadline/DeadlineController.test.ts) and
 [type cases](../../tests/deadline/DeadlineController.test-d.ts). Their presence
 alone does not establish complete conformance or a release decision.
+
+The [requirement index](requirements.yml) and [case inventory](cases.yml) are
+non-normative review aids. Their planned cases and current test references are not
+by themselves evidence of complete requirement satisfaction.
 
 ## Audit
 
@@ -557,3 +586,22 @@ for this new candidate.
 **Action Required:** Review the selected contract and consumer scenarios, then
 complete appropriate runtime, type, and failure review before acceptance or
 release.
+
+### 2026-11-12
+
+**Status:** Partial
+
+**Findings:**
+
+| Finding                                | Files                                                          | Lines                     | Assessment                                          |
+| -------------------------------------- | -------------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
+| Independent negotiation ownership fits | [Controller](../../src/deadline/DeadlineController.ts)         | Controller contract       | Accepted without implying task or transport ownership |
+| Focused tests do not prove all cases   | [Controller tests](../../tests/deadline/DeadlineController.test.ts) | Runtime cases          | Additional conformance and integration review needed |
+| Adapter reuse is not established       | [Async owner](../../src/deadline/DeadlineScopeOwner.ts), [sync owner](../../src/deadline/SynchronousDeadlineOwner.ts) | Release boundaries | Preserve distinct boundaries pending protocol review |
+
+**Summary:** The public controller decision is accepted for independently owned
+budgets, including negotiation and fan-out. Active requirements remain separate
+from implementation satisfaction and release evidence.
+
+**Action Required:** Bind and review requirement-level evidence, including real
+consumer integration, before making conformance or release claims.
