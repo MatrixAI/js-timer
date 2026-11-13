@@ -2,7 +2,8 @@
   pkgs,
   nodejs,
   src,
-  setupTestDependencies,
+  libraryBuild,
+  setupDependencies,
   ...
 }:
 let
@@ -26,17 +27,21 @@ pkgs.stdenv.mkDerivation {
   pname = "library-browser-bundle";
   version = "0.1.0";
   src = bundleSource;
-  nativeBuildInputs = [ nodejs ];
+  nativeBuildInputs = [
+    nodejs
+    pkgs.jq
+  ];
   buildPhase = ''
     runHook preBuild
-    ${setupTestDependencies}
+    ${setupDependencies}
+    cp -R ${libraryBuild}/dist dist
     bash ${./bundle.sh}
     runHook postBuild
   '';
   installPhase = ''
     runHook preInstall
     mkdir -p "$out"
-    cp tmp/integration-browser/browser.js tmp/integration-browser/artifacts/bundle-inputs.json "$out/"
+    cp tmp/integration-browser/browser.js "$out/"
     runHook postInstall
   '';
 }

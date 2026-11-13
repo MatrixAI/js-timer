@@ -9,15 +9,6 @@ const options = { cwd: root, stdio: 'inherit', windowsHide: true };
 execFileSync(
   process.execPath,
   [
-    path.join(root, 'node_modules/typescript/bin/tsc'),
-    '-p',
-    path.join(root, 'tsconfig.build.json'),
-  ],
-  options,
-);
-execFileSync(
-  process.execPath,
-  [
     path.join(root, 'node_modules/vitest/vitest.mjs'),
     'run',
     ...process.argv.slice(2),

@@ -3,8 +3,9 @@
   nodejs,
   system,
   src,
-  setupTestDependencies,
-  testDependencies,
+  setupDependencies,
+  installedDependencies,
+  libraryBuild,
 }:
 pkgs.stdenv.mkDerivation {
   pname = "timer-unit-js";
@@ -15,17 +16,17 @@ pkgs.stdenv.mkDerivation {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
-    ${setupTestDependencies}
+    ${setupDependencies}
     # Vitest 5.1 hardcodes the TypeScript build-info path beside its own
     # distribution, independently of the configured Vitest cache directory.
     # Shared dependencies are symlinked into the read-only Nix store, so give
     # Vitest a writable sandbox-local copy while retaining the shared remainder.
     mkdir -p tmp/vitest
-    cp -R ${testDependencies}/node_modules/vitest tmp/vitest/package
+    cp -R ${installedDependencies}/node_modules/vitest tmp/vitest/package
     chmod -R u+w tmp/vitest/package
     rm node_modules/vitest
     ln -s ../tmp/vitest/package node_modules/vitest
-    npm run build
+    ln -s ${libraryBuild}/dist dist
     npm test
     runHook postCheck
   '';

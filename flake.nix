@@ -56,6 +56,29 @@
               npmSources
               ;
           };
+          installedDependencies = pkgs.buildNpmPackage {
+            pname = "library-npm-dependencies";
+            version = "0";
+            src = npmDependencies.npmDeps;
+            inherit nodejs;
+            inherit (npmDependencies) npmDeps npmConfigHook;
+            dontNpmBuild = true;
+            dontFixup = true;
+            installPhase = ''
+              mkdir -p "$out"
+              mv node_modules "$out/node_modules"
+            '';
+          };
+          setupDependencies = ''
+            mkdir node_modules
+            find ${installedDependencies}/node_modules -mindepth 1 -maxdepth 1 \
+              -exec ln -s -t node_modules {} +
+            export PATH="$PWD/node_modules/.bin:$PATH"
+          '';
+          libraryBuild = import ./nix/npm-build.nix {
+            inherit pkgs nodejs setupDependencies;
+            gitignore = nixpkgs-matrixai.lib.gitignore;
+          };
           runtimeProviders =
             builtins.map
               (selected: {
@@ -70,7 +93,12 @@
                 )
               );
           npmPackage = import ./nix/npm-package.nix {
-            inherit pkgs nodejs npmDependencies;
+            inherit
+              pkgs
+              nodejs
+              npmDependencies
+              libraryBuild
+              ;
             gitignore = nixpkgs-matrixai.lib.gitignore;
             inherit runtimeProviders;
             sourceProvenance = {
@@ -87,7 +115,6 @@
             };
           };
           browserEnvironment = {
-            CHECK_PLAYWRIGHT_VERSION = pkgs.playwright-driver.version;
             PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
             PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
             PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
@@ -113,6 +140,9 @@
               lint
               system
               npmDependencies
+              libraryBuild
+              installedDependencies
+              setupDependencies
               ;
             gitignore = nixpkgs-matrixai.lib.gitignore;
           };
@@ -128,6 +158,7 @@
             packages = [
               nodejs
               (pkgs.lib.hiPrio npm)
+              pkgs.jq
               lint
               pkgs.gnutar
               pkgs.structured-madr

@@ -310,14 +310,14 @@ npm test
 npm run lint
 ```
 
-Tests compile first and use Vitest against emitted modules, with explicit test
-imports and standard decorators. All Node cases, including provider composition,
-are under `tests/unit` and run with `npm test`. Arguments pass through. JUnit is
-written under `tmp/junit`; optional V8/Cobertura coverage is produced with
-`npm test -- --coverage`. Use `npm run lintfix` for active development and
-`npm run lint` for non-mutating verification. Documentation is handwritten at
-the repository root; there is no TypeDoc dependency, generated documentation
-directory, or installer test suite.
+Build before testing when the distribution is missing or stale. Vitest tests use
+emitted modules, with explicit test imports and standard decorators. All Node
+cases, including provider composition, are under `tests/unit` and run with
+`npm test`. Arguments pass through. JUnit is written under `tmp/junit`; optional
+V8/Cobertura coverage is produced with `npm test -- --coverage`. Use
+`npm run lintfix` for active development and `npm run lint` for non-mutating
+verification. Documentation is handwritten at the repository root; there is no
+TypeDoc dependency, generated documentation directory, or installer test suite.
 
 ### Lint and formatting
 
@@ -381,23 +381,59 @@ retain `report.json` and artifacts.
 The independent browser check runs TypeScript Playwright cases in a Chromium
 document and dedicated worker against a browser-targeted bundle of the built
 timer. It exercises the browser performance clock and host scheduling. Nix
-reuses the installed test dependencies and separately cached bundle; the bundle
-does not depend on test or specification files. Normal tests do not start a
-browser. These cases do not establish compatibility with every browser.
+reuses installed test dependencies and the compiled distribution across the
+package, unit check, and separately cached browser bundle. Normal tests do not
+start a browser. These cases do not establish compatibility with every browser.
 
 The browser check sidecars use a shared library convention: the package build
-emits `dist/index.js`, esbuild exposes its browser bundle as `libraryBundle`,
-and the check supplies its path through `LIBRARY_BUNDLE`. Playwright discovers
-test and spec files under `tests/browser`. Each library supplies its own tests
-and locks compatible Playwright and esbuild dependencies. The check rejects a
-Playwright version mismatch and uses Nix-provided Chromium without downloading a
-browser.
+emits `dist/index.js`, esbuild bundles it as an ES module using the effective
+TypeScript build target, and the check supplies its path through
+`LIBRARY_BUNDLE`. Playwright discovers test and spec files under
+`tests/browser`. Each library supplies its own tests and locks compatible
+Playwright and esbuild dependencies. The check uses Nix-provided Chromium
+without downloading a browser; Playwright reports missing browser binaries.
 
-The bundle source excludes tests, specifications, check adapters, and the
-Playwright configuration so those changes do not invalidate the cached bundle.
-The package build must not depend on those excluded inputs. This convention is
-for browser-compatible libraries; it does not make Node-only dependencies
-portable or establish compatibility with untested browsers.
+The shared browser fixture uses Playwright's isolated page and serves a local,
+intercepted document for module workers. Its supporting utilities load the ESM
+bundle and clean up workers and object URLs. Capability-specific specs provide
+the scenarios and assertions; the fixture and utilities contain no timer
+imports. Scenarios are serialized as functions, so they cannot capture local
+variables or runtime imports. Return plain serializable data for assertions:
+worker results must also support structured cloning. Blob-backed modules can
+make source-level debugging less direct than debugging ordinary loaded files.
+
+The compiled distribution and bundle sources exclude tests, specifications,
+check adapters, and the Playwright configuration so those changes do not
+invalidate either cached result. The package build must not depend on those
+excluded inputs. This convention is for browser-compatible libraries; it does
+not make Node-only dependencies portable or establish compatibility with
+untested browsers.
+
+Run the independent checks from the repository root:
+
+```sh
+nix build '.#checks.x86_64-linux.integration-browser'
+nix build '.#checks.x86_64-linux.unit-js'
+nix build '.#checks.x86_64-linux.lint'
+```
+
+The browser and unit checks do not run lint. The unit check uses the shared
+compiled distribution. For local tests, run `npm run build` before `npm test`
+when the distribution needs updating; tests do not rebuild it. A flake-wide
+check evaluates all exposed checks, including lint.
+
+For interactive browser debugging in the activated development shell, build a
+local bundle and launch the Playwright inspector:
+
+```sh
+npm run build
+bash ./nix/checks/browser/bundle.sh
+bash ./nix/checks/browser/run.sh --debug
+```
+
+Use `--headed` to watch a normal run or `--ui` for Playwright's test UI. These
+commands need an available graphical display and headed Chromium; they run
+outside the hermetic check, using local dependencies and state.
 
 See [verification evidence](VERIFICATION.md) for executed results. Consumer
 updates require a new authorized release/tag. Git-only releases do not publish

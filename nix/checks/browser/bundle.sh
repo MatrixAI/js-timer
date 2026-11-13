@@ -2,13 +2,12 @@
 
 set -euo pipefail
 
-npm run build
-mkdir -p tmp/integration-browser/artifacts
+target="$(./node_modules/.bin/tsc --showConfig -p ./tsconfig.build.json |
+  jq -er '.compilerOptions.target | strings | ascii_downcase')"
+mkdir -p tmp/integration-browser
 ./node_modules/.bin/esbuild dist/index.js \
   --bundle \
   --platform=browser \
-  --format=iife \
-  --global-name=libraryBundle \
-  --target=es2022 \
-  --outfile=tmp/integration-browser/browser.js \
-  --metafile=tmp/integration-browser/artifacts/bundle-inputs.json
+  --format=esm \
+  --target="$target" \
+  --outfile=tmp/integration-browser/browser.js

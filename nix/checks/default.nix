@@ -5,38 +5,22 @@
   system,
   gitignore,
   npmDependencies,
+  libraryBuild,
+  installedDependencies,
+  setupDependencies,
 }:
 let
   src = gitignore.gitignoreSource ../..;
-  inherit (npmDependencies) npmDeps npmConfigHook;
-  testDependencies = pkgs.buildNpmPackage {
-    pname = "library-test-npm-dependencies";
-    version = "0";
-    src = npmDeps;
-    inherit nodejs npmDeps npmConfigHook;
-    dontNpmBuild = true;
-    dontFixup = true;
-    installPhase = ''
-      mkdir -p "$out"
-      mv node_modules "$out/node_modules"
-    '';
-  };
-  setupTestDependencies = ''
-    mkdir node_modules
-    find ${testDependencies}/node_modules -mindepth 1 -maxdepth 1 \
-      -exec ln -s -t node_modules {} +
-    export PATH="$PWD/node_modules/.bin:$PATH"
-  '';
   runtimeInputs = {
     inherit
       pkgs
       nodejs
       system
       src
-      setupTestDependencies
+      setupDependencies
       ;
   };
-  browserBundle = import ./browser/bundle.nix runtimeInputs;
+  browserBundle = import ./browser/bundle.nix (runtimeInputs // { inherit libraryBuild; });
   integration-browser = import ./browser (runtimeInputs // { inherit browserBundle; });
   unit-js = import ./unit-js.nix {
     inherit
@@ -44,8 +28,9 @@ let
       nodejs
       system
       src
-      setupTestDependencies
-      testDependencies
+      setupDependencies
+      installedDependencies
+      libraryBuild
       ;
   };
   lintCheck = lint.mkCheck {

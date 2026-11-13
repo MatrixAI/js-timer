@@ -3,7 +3,7 @@
   nodejs,
   system,
   src,
-  setupTestDependencies,
+  setupDependencies,
   browserBundle,
 }:
 let
@@ -16,7 +16,6 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = [ nodejs ];
   nativeCheckInputs = [ playwright.browsers ];
   CHECK_SYSTEM = system;
-  CHECK_PLAYWRIGHT_VERSION = playwright.version;
   LIBRARY_BUNDLE = "${browserBundle}/browser.js";
   PLAYWRIGHT_BROWSERS_PATH = playwright.browsers;
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
@@ -26,11 +25,10 @@ pkgs.stdenv.mkDerivation {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
-    export HOME="$TMPDIR/browser-home"
+    export HOME="$TMPDIR/home"
     mkdir -p "$HOME"
-    ${setupTestDependencies}
+    ${setupDependencies}
     mkdir -p tmp/integration-browser/artifacts
-    cp ${browserBundle}/bundle-inputs.json tmp/integration-browser/artifacts/
     bash ./nix/checks/browser/run.sh
     runHook postCheck
   '';
@@ -47,8 +45,7 @@ pkgs.stdenv.mkDerivation {
       "system": "${system}",
       "summary": "Chromium browser integration checks passed",
       "artifacts": {
-        "playwright": "artifacts/playwright.json",
-        "bundleInputs": "artifacts/bundle-inputs.json"
+        "playwright": "artifacts/playwright.json"
       }
     }
     EOF
