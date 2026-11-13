@@ -16,7 +16,10 @@ pkgs.stdenv.mkDerivation {
   checkPhase = ''
     runHook preCheck
     ${setupTestDependencies}
-    # Vitest writes its typecheck build info alongside its own distribution.
+    # Vitest 5.1 hardcodes the TypeScript build-info path beside its own
+    # distribution, independently of the configured Vitest cache directory.
+    # Shared dependencies are symlinked into the read-only Nix store, so give
+    # Vitest a writable sandbox-local copy while retaining the shared remainder.
     mkdir -p tmp/vitest
     cp -R ${testDependencies}/node_modules/vitest tmp/vitest/package
     chmod -R u+w tmp/vitest/package
