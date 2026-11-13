@@ -27,7 +27,7 @@ pkgs.stdenv.mkDerivation {
     rm node_modules/vitest
     ln -s ../tmp/vitest/package node_modules/vitest
     ln -s ${libraryBuild}/dist dist
-    npm test
+    npm test -- --prebuilt
     runHook postCheck
   '';
   installPhase = ''

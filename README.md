@@ -310,7 +310,7 @@ npm test
 npm run lint
 ```
 
-Build before testing when the distribution is missing or stale. Vitest tests use
+Local tests build incrementally without cleaning before Vitest runs against
 emitted modules, with explicit test imports and standard decorators. All Node
 cases, including provider composition, are under `tests/unit` and run with
 `npm test`. Arguments pass through. JUnit is written under `tmp/junit`; optional
@@ -418,9 +418,10 @@ nix build '.#checks.x86_64-linux.lint'
 ```
 
 The browser and unit checks do not run lint. The unit check uses the shared
-compiled distribution. For local tests, run `npm run build` before `npm test`
-when the distribution needs updating; tests do not rebuild it. A flake-wide
-check evaluates all exposed checks, including lint.
+compiled distribution via `npm test -- --prebuilt`. Local tests build
+incrementally without cleaning; run a clean `npm run build` after source files
+are removed or renamed, since incremental compilation does not remove old
+output. A flake-wide check evaluates all exposed checks, including lint.
 
 For interactive browser debugging in the activated development shell, build a
 local bundle and launch the Playwright inspector:

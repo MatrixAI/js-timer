@@ -13,8 +13,10 @@
 - Golden commands: `npm run build`, `npm test`, `npm run lint`, and
   `nix flake check`. Browser testing runs in its independent Nix check, not as
   part of normal tests.
-- Use Vitest with explicit test imports, build-first tests, a 20-second default
-  timeout, and JUnit/coverage artifacts under `tmp/`.
+- Use Vitest with explicit test imports, a 20-second default timeout, and
+  JUnit/coverage artifacts under `tmp/`. Local tests build incrementally without
+  cleaning; hermetic checks use the prebuilt option. The normal build cleans
+  first.
 - Documentation is handwritten Markdown. Do not restore TypeDoc or generated API
   documentation, add GitHub Actions, or publish/tag without approval.
 - Keep prepared npm archives verbatim: preserve the canonical manifest and
