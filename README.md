@@ -385,6 +385,20 @@ reuses the installed test dependencies and separately cached bundle; the bundle
 does not depend on test or specification files. Normal tests do not start a
 browser. These cases do not establish compatibility with every browser.
 
+The browser check sidecars use a shared library convention: the package build
+emits `dist/index.js`, esbuild exposes its browser bundle as `libraryBundle`,
+and the check supplies its path through `LIBRARY_BUNDLE`. Playwright discovers
+test and spec files under `tests/browser`. Each library supplies its own tests
+and locks compatible Playwright and esbuild dependencies. The check rejects a
+Playwright version mismatch and uses Nix-provided Chromium without downloading a
+browser.
+
+The bundle source excludes tests, specifications, check adapters, and the
+Playwright configuration so those changes do not invalidate the cached bundle.
+The package build must not depend on those excluded inputs. This convention is
+for browser-compatible libraries; it does not make Node-only dependencies
+portable or establish compatibility with untested browsers.
+
 See [verification evidence](VERIFICATION.md) for executed results. Consumer
 updates require a new authorized release/tag. Git-only releases do not publish
 to npm; the obsolete tag-triggered npm publisher is removed.

@@ -10,14 +10,14 @@ let
   playwright = pkgs.playwright-driver;
 in
 pkgs.stdenv.mkDerivation {
-  pname = "timer-integration-browser";
+  pname = "integration-browser";
   version = "0.1.0";
   inherit src;
   nativeBuildInputs = [ nodejs ];
   nativeCheckInputs = [ playwright.browsers ];
   CHECK_SYSTEM = system;
   CHECK_PLAYWRIGHT_VERSION = playwright.version;
-  TIMER_BROWSER_BUNDLE = "${browserBundle}/browser.js";
+  LIBRARY_BUNDLE = "${browserBundle}/browser.js";
   PLAYWRIGHT_BROWSERS_PATH = playwright.browsers;
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
   PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
@@ -45,7 +45,7 @@ pkgs.stdenv.mkDerivation {
       "kind": "integration",
       "status": "passed",
       "system": "${system}",
-      "summary": "Chromium document and dedicated-worker timer checks passed",
+      "summary": "Chromium browser integration checks passed",
       "artifacts": {
         "playwright": "artifacts/playwright.json",
         "bundleInputs": "artifacts/bundle-inputs.json"

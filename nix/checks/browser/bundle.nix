@@ -13,19 +13,17 @@ let
       let
         relative = pkgs.lib.removePrefix "${toString src}/" (toString path);
       in
+      # The library build must not consume tests, specs, or check adapters.
       !(builtins.elem relative [
         "tests"
         "specs"
-        "nix"
-        "README.md"
-        "AGENTS.md"
+        "nix/checks"
         "playwright.config.ts"
-        "vitest.config.mts"
       ]);
   };
 in
 pkgs.stdenv.mkDerivation {
-  pname = "timer-browser-bundle";
+  pname = "library-browser-bundle";
   version = "0.1.0";
   src = bundleSource;
   nativeBuildInputs = [ nodejs ];

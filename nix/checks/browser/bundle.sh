@@ -8,7 +8,7 @@ mkdir -p tmp/integration-browser/artifacts
   --bundle \
   --platform=browser \
   --format=iife \
-  --global-name=browserTimer \
+  --global-name=libraryBundle \
   --target=es2022 \
   --outfile=tmp/integration-browser/browser.js \
   --metafile=tmp/integration-browser/artifacts/bundle-inputs.json

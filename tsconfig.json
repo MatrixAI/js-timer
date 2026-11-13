@@ -30,6 +30,7 @@
     "./src/**/*.json",
     "./tests/**/*",
     "./scripts/**/*",
+    "./*.ts",
     "./*.mjs",
     "./*.mts",
     "./benches/**/*"

@@ -4,19 +4,13 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import playwrightManifest from '@playwright/test/package.json' with { type: 'json' };
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 let browserBundle: string;
 
 test.beforeAll(async () => {
-  if (process.env.CHECK_PLAYWRIGHT_VERSION != null) {
-    expect(playwrightManifest.version).toBe(
-      process.env.CHECK_PLAYWRIGHT_VERSION,
-    );
-  }
   browserBundle = await readFile(
-    process.env.TIMER_BROWSER_BUNDLE ??
+    process.env.LIBRARY_BUNDLE ??
       path.join(root, 'tmp/integration-browser/browser.js'),
     'utf8',
   );
@@ -32,9 +26,9 @@ async function runBrowserScenario() {
     errors,
   } = (
     globalThis as typeof globalThis & {
-      browserTimer: typeof TimerModule;
+      libraryBundle: typeof TimerModule;
     }
-  ).browserTimer;
+  ).libraryBundle;
   const before = performance.timeOrigin + performance.now();
   const originalDateNow = Date.now;
   let timer: TimerType<number>;
@@ -183,6 +177,7 @@ test('timer uses browser clocks and scheduling in a document', async ({
 test('timer uses browser clocks and scheduling in a dedicated worker', async ({
   page,
 }) => {
+  // The worker evaluates the same bundle and scenario in its own global scope.
   const source = `${browserBundle}\n(${runBrowserScenario.toString()})().then(
     (result) => postMessage({ result }),
     (error) => postMessage({ error: String(error) }),

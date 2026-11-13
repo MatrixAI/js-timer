@@ -10,7 +10,7 @@ let
   src = gitignore.gitignoreSource ../..;
   inherit (npmDependencies) npmDeps npmConfigHook;
   testDependencies = pkgs.buildNpmPackage {
-    pname = "timer-test-npm-dependencies";
+    pname = "library-test-npm-dependencies";
     version = "0";
     src = npmDeps;
     inherit nodejs npmDeps npmConfigHook;
