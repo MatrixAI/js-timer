@@ -167,6 +167,17 @@ another advancement reaches a terminal result. An abandoned iterator may retain
 its scheduler and links indefinitely. Overlapping async-generator operations are
 rejected; disposal cannot silently drain yielded cleanup.
 
+Plain async timing returns a native promise. Plain generator forms return their
+standard iterator protocols. Plain timing's type checks reject visible return
+capabilities that its wrapper cannot preserve; the combined method also rejects
+extra capabilities beyond its cancellable result. Widening a return type, casts,
+or untyped code can bypass these checks; the wrapper does not restore hidden
+capabilities. The combined function returns a standard cancellable promise, not
+an arbitrary subtype of its body's result. Its invocation-local cancellation
+request reaches the supplied context signal but does not automatically cancel an
+independently returned cancellable promise; the body must explicitly connect any
+such authority when appropriate.
+
 These forms provide a deadline and local signal, not a `Timer` instance. They
 borrow any existing timer without changing it. An inherited fixed deadline must
 use the same clock and can only shorten the new budget. Expiry requests
@@ -175,11 +186,12 @@ finish. Synchronous calls cannot be preempted by an event-loop timeout. Their
 scheduler has synchronous cleanup and does not own an asynchronous timer
 handler. The combined function returns a completion-safe cancellable promise;
 the standard method decorator cannot change the method's declared TypeScript
-return type. Selected context arguments must be ordinary data records in finite
-required argument tuples; overloads and generic signatures are not preserved
-generally. For generators with explicitly typed input values, declare the
-generator function separately before adapting it; inline expressions can exceed
-TypeScript's inference for these context checks.
+return type. A method declared to return a cancellable promise can expose that
+capability after decoration. Selected context arguments must be ordinary data
+records in finite required argument tuples; overloads and generic signatures are
+not preserved generally. For generators with explicitly typed input values,
+declare the generator function separately before adapting it; inline expressions
+can exceed TypeScript's inference for these context checks.
 
 ### Fixed deadlines and relative budgets
 

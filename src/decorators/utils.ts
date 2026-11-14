@@ -1,4 +1,5 @@
 import type { ContextFunction } from '@matrixai/contexts';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type {
   TimingFunctionCheck,
   TimingKind,
@@ -49,26 +50,38 @@ function timedCancellable<
   This = unknown,
   Args extends unknown[] = unknown[],
 >(options: Omit<TimingOptions<Position, This, Args>, 'kind'>) {
-  return function decorate<MethodThis, MethodArgs extends unknown[], Result>(
-    method: ContextFunction<MethodThis, MethodArgs, Result> &
-      TimingFunctionCheck<MethodArgs, Position>,
+  return function decorate<
+    MethodThis,
+    MethodArgs extends unknown[],
+    Result extends Promise<unknown>,
+  >(
+    method: ((this: MethodThis, ...args: MethodArgs) => Result) &
+      TimingFunctionCheck<MethodArgs, Position> &
+      ([PromiseCancellable<Awaited<Result>>] extends [Result]
+        ? unknown
+        : never),
     metadata: ClassMethodDecoratorContext<
       MethodThis,
-      ContextFunction<MethodThis, MethodArgs, Result>
+      (this: MethodThis, ...args: MethodArgs) => Result
     >,
-  ): ContextFunction<MethodThis, MethodArgs, Result> {
+  ): (this: MethodThis, ...args: MethodArgs) => Result {
     if (metadata.kind !== 'method') {
       throw new TypeError(
         'timedCancellable supports standard method decorators only',
       );
     }
     return timedCancellableFunction(
-      method,
+      method as unknown as ContextFunction<
+        MethodThis,
+        MethodArgs,
+        Awaited<Result>
+      > &
+        TimingFunctionCheck<MethodArgs, Position>,
       options as unknown as Omit<
         TimingOptions<Position, MethodThis, MethodArgs>,
         'kind'
       >,
-    );
+    ) as unknown as (this: MethodThis, ...args: MethodArgs) => Result;
   };
 }
 

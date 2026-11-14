@@ -61,6 +61,55 @@ test('timing facades do not claim refined timer capabilities', () => {
   // @ts-expect-error A timeout supplies an ordinary signal, not a refinement.
   createTimingFacades<RefinedSignal>()(createTimeoutScope({ duration: 1 }));
 });
+
+test('plain timing rejects return capabilities it cannot preserve', () => {
+  type Context = { signal?: AbortSignal };
+  const cancellable = (_ctx: Context): PromiseCancellable<number> => {
+    throw new Error('type-only');
+  };
+  const generator = (_ctx: Context): Generator<number> & { special: true } => {
+    throw new Error('type-only');
+  };
+  const asyncGenerator = (
+    _ctx: Context,
+  ): AsyncGenerator<number> & { special: true } => {
+    throw new Error('type-only');
+  };
+
+  // @ts-expect-error Plain async timing returns a native promise, not this subtype.
+  timed(cancellable, { context: 0, kind: 'async', duration: 5 });
+  // @ts-expect-error The generator wrapper does not preserve extra capabilities.
+  timed(generator, { context: 0, kind: 'generator', duration: 5 });
+  // @ts-expect-error The async generator wrapper does not preserve extra capabilities.
+  timed(asyncGenerator, { context: 0, kind: 'async-generator', duration: 5 });
+  const combined = timedCancellable(cancellable, { context: 0, duration: 5 });
+  expectTypeOf(combined({})).toEqualTypeOf<PromiseCancellable<number>>();
+
+  class Service {
+    // @ts-expect-error A standard decorator cannot preserve this promise subtype.
+    @timedMethod({ context: 0, kind: 'async', duration: 5 })
+    run(_ctx: Context): PromiseCancellable<number> {
+      throw new Error('type-only');
+    }
+    // @ts-expect-error The decorated iterator cannot retain extra capabilities.
+    @timedMethod({ context: 0, kind: 'generator', duration: 5 })
+    rows(_ctx: Context): Generator<number> & { special: true } {
+      throw new Error('type-only');
+    }
+    // @ts-expect-error The decorated async iterator cannot retain extra capabilities.
+    @timedMethod({ context: 0, kind: 'async-generator', duration: 5 })
+    updates(_ctx: Context): AsyncGenerator<number> & { special: true } {
+      throw new Error('type-only');
+    }
+    // @ts-expect-error The combined decorator cannot retain extra promise capabilities.
+    @cancellableMethod({ context: 0, duration: 5 })
+    combined(_ctx: Context): PromiseCancellable<number> & { special: true } {
+      throw new Error('type-only');
+    }
+  }
+  void Service;
+});
+
 test('named authoring forms preserve protocol and declared method signatures', () => {
   type Context = { trace: string; signal?: AbortSignal };
   const contextCheck: TimingFunctionCheck<[Context], 0> = undefined;
@@ -162,9 +211,16 @@ test('named authoring forms preserve protocol and declared method signatures', (
     async combined(ctx: Context) {
       return ctx.trace;
     }
+    @cancellableMethod({ context: 0, duration: 5 })
+    cancellable(_ctx: Context): PromiseCancellable<number> {
+      throw new Error('type-only');
+    }
   }
   expectTypeOf(new Service().combined({ trace: 'x' })).toEqualTypeOf<
     Promise<string>
+  >();
+  expectTypeOf(new Service().cancellable({ trace: 'x' })).toEqualTypeOf<
+    PromiseCancellable<number>
   >();
   // @ts-expect-error Promise-returning work does not preserve the synchronous protocol.
   timed(async (ctx: Context) => ctx.trace, {

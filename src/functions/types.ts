@@ -57,30 +57,38 @@ type TimingKindCheck<Result, Kind extends TimingKind> = [Result] extends [never]
   ? unknown
   : Kind extends 'async'
     ? Result extends Promise<unknown>
-      ? unknown
+      ? [TimingResult<Result, Kind>] extends [Result]
+        ? unknown
+        : never
       : never
     : Kind extends 'generator'
       ? Result extends Generator<infer _Y, infer _R, infer _N>
-        ? unknown
+        ? [TimingResult<Result, Kind>] extends [Result]
+          ? unknown
+          : never
         : never
       : Kind extends 'async-generator'
         ? Result extends AsyncGenerator<infer _Y, infer _R, infer _N>
-          ? unknown
+          ? [TimingResult<Result, Kind>] extends [Result]
+            ? unknown
+            : never
           : never
         : Result extends
               PromiseLike<unknown> | Iterator<unknown> | AsyncIterator<unknown>
           ? never
           : unknown;
 
-type TimingResult<Result, Kind extends TimingKind> = Kind extends 'generator'
-  ? Result extends Generator<infer Y, infer R, infer N>
-    ? Generator<Y, R, N>
-    : never
-  : Kind extends 'async-generator'
-    ? Result extends AsyncGenerator<infer Y, infer R, infer N>
-      ? AsyncGenerator<Y, R, N>
+type TimingResult<Result, Kind extends TimingKind> = Kind extends 'async'
+  ? Promise<Awaited<Result>>
+  : Kind extends 'generator'
+    ? Result extends Generator<infer Y, infer R, infer N>
+      ? Generator<Y, R, N>
       : never
-    : Result;
+    : Kind extends 'async-generator'
+      ? Result extends AsyncGenerator<infer Y, infer R, infer N>
+        ? AsyncGenerator<Y, R, N>
+        : never
+      : Result;
 
 export type {
   TimingFunctionCheck,

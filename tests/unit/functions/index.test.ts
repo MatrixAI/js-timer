@@ -131,6 +131,18 @@ describe('named timing authoring forms', () => {
     await expect(result).resolves.toBe('finished');
   });
 
+  test('plain timing returns a native promise even when a widened body is cancellable', async () => {
+    function source(_context: Request): Promise<number> {
+      return PromiseCancellable.resolve(42);
+    }
+    const result = timed(source, { context: 0, kind: 'async', duration: 5000 })(
+      { trace: 'value' },
+    );
+    expect(result).toBeInstanceOf(Promise);
+    expect(result).not.toBeInstanceOf(PromiseCancellable);
+    await expect(result).resolves.toBe(42);
+  });
+
   test('method duration is evaluated for each receiver at entry', () => {
     const durations: number[] = [];
     class Service {
@@ -389,6 +401,57 @@ describe('named timing authoring forms', () => {
     await expect(new Service().run({ trace: 'method' })).resolves.toBe(
       'method',
     );
+  });
+
+  test('combined cancellation does not cancel an independent body promise', async () => {
+    const entered = deferred();
+    const gate = deferred<number>();
+    const body = PromiseCancellable.from(gate.promise, {
+      policy: 'request-only',
+    });
+    let child!: AbortSignal;
+    const run = timedCancellable(
+      (context: Request) => {
+        child = context.signal!;
+        entered.resolve();
+        return body;
+      },
+      { context: 0, duration: 5000 },
+    );
+    const result = run({ trace: 'value' });
+    await entered.promise;
+    const reason = { stop: true };
+    result.cancel(reason);
+    expect(child.reason).toBe(reason);
+    expect(body.signal.aborted).toBe(false);
+    gate.resolve(42);
+    await expect(result).resolves.toBe(42);
+  });
+
+  test('combined method preserves a declared cancellable result', async () => {
+    const entered = deferred();
+    const gate = deferred<number>();
+    const body = PromiseCancellable.from(gate.promise, {
+      policy: 'request-only',
+    });
+    let child!: AbortSignal;
+    class Service {
+      @cancellableMethod({ context: 0, duration: 5000 })
+      run(context: Request): PromiseCancellable<number> {
+        child = context.signal!;
+        entered.resolve();
+        return body;
+      }
+    }
+    const result = new Service().run({ trace: 'value' });
+    expect(result).toBeInstanceOf(PromiseCancellable);
+    await entered.promise;
+    const reason = { stop: true };
+    result.cancel(reason);
+    expect(child.reason).toBe(reason);
+    expect(body.signal.aborted).toBe(false);
+    gate.resolve(42);
+    await expect(result).resolves.toBe(42);
   });
 
   test('rejects incompatible deadlines and preserves pre-aborted reasons', () => {
