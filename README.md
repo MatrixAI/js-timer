@@ -5,16 +5,15 @@ reset/refresh, and remaining-time inspection.
 
 ## Version 5 migration
 
-This development version adopts contexts v4 and async-cancellable v4. Timer
-execution remains separate from abortable waiting, and upstream signals can be
-linked directionally. Timer completion now includes owned scheduler and link
-cleanup and reports cleanup failures. Existing version 4 installations retain
-their original API; this checkout is not itself a published version 5 release.
+Version 5 adopts contexts v4 and async-cancellable v4. Timer execution remains
+separate from abortable waiting, and upstream signals can be linked
+directionally. Timer completion includes owned scheduler and link cleanup and
+reports cleanup failures. Existing version 4 installations retain their original
+API.
 
 ## Installation and usage
 
-Use a released Git tag when consuming the package. Version 5 must be released
-before it can be installed by its version 5 tag.
+Use a released Git tag when consuming the package.
 
 ```ts
 import { Timer } from '@matrixai/timer';
@@ -290,8 +289,8 @@ not completed.
 ### Released dependency boundary
 
 The errors dependency remains selected by its released Git tag over SSH.
-Contexts and cancellation select their Git-only `v4.0.0` releases; the npm lock
-pins the exact provider commits. Authorized SSH access is required for
+Contexts selects Git-only `v4.1.0` and cancellation selects `v4.1.1`; the npm
+lock pins the exact provider commits. Authorized SSH access is required for
 acquisition. Older npm-registry releases do not supply these APIs.
 
 These selections use the existing async-init consumer pattern: the npm lock owns
