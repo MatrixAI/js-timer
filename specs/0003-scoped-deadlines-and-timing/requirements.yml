@@ -1,0 +1,57 @@
+version: 1
+role: non-normative-requirement-index
+normative_source: adr.md
+decision_status: accepted
+assessment_status: pending
+case_registries: [cases.yml]
+requirements:
+  - id: REQ-TIMER-DEADLINE-001
+    spec: adr.md#REQ-TIMER-DEADLINE-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-DEADLINE-CAPTURE, CASE-DEADLINE-CLOCKS]
+  - id: REQ-TIMER-DEADLINE-002
+    spec: adr.md#REQ-TIMER-DEADLINE-002
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-DEADLINE-LAWS]
+  - id: REQ-TIMER-BUDGET-001
+    spec: adr.md#REQ-TIMER-BUDGET-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-DEADLINE-BUDGET, CASE-DEADLINE-EXPIRED]
+  - id: REQ-TIMER-CLOCK-001
+    spec: adr.md#REQ-TIMER-CLOCK-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-DEADLINE-WAKEUP, CASE-DEADLINE-CLOCKS]
+  - id: REQ-TIMER-SCOPE-001
+    spec: adr.md#REQ-TIMER-SCOPE-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-SCOPE-DRAIN, CASE-TIMER-SCOPE-BORROWED]
+  - id: REQ-TIMER-SCOPE-002
+    spec: adr.md#REQ-TIMER-SCOPE-002
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-DEADLINE-ENTRY, CASE-DEADLINE-DRAIN, CASE-DEADLINE-SETUP]
+  - id: REQ-TIMER-SCOPE-003
+    spec: adr.md#REQ-TIMER-SCOPE-003
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-SCOPE-FAILURE, CASE-DEADLINE-SETUP]
+  - id: REQ-TIMER-CONTEXT-001
+    spec: adr.md#REQ-TIMER-CONTEXT-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-CONTEXT-TYPES, CASE-TIMER-SCOPE-ORDER]
+  - id: REQ-TIMER-FACADE-001
+    spec: adr.md#REQ-TIMER-FACADE-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-FACADE-PARITY, CASE-TIMER-FACADE-TYPES]
+  - id: REQ-TIMER-FACADE-002
+    spec: adr.md#REQ-TIMER-FACADE-002
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-FACADE-PARITY, CASE-TIMER-FACADE-TYPES, CASE-TIMER-FACADE-PACKED]

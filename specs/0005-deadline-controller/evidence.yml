@@ -1,0 +1,66 @@
+version: 1
+role: non-normative-local-evidence
+receipts:
+  - id: EVID-CONTROLLER-NODE-20261112
+    kind: hermetic-node-runtime-and-type-tests
+    outcome: passed
+    date: '2026-11-12'
+    base_commit: c22a744347f68f2ee2f0333f0a9443a16905f851
+    worktree: dirty; test layout and check wiring differ from the base commit
+    check: checks.x86_64-linux.unit-js
+    runtime: Node.js 24.21.0
+    runner: Vitest 5.1.0
+    test_files: 11
+    tests: 100
+    report:
+      path: /nix/store/qjaajghyv61nkrswvp882h40k6df6krb-timer-unit-js-0.1.0
+      retention: local Nix store output; subject to garbage collection
+    source_digests:
+      - path: ../../src/deadline/DeadlineController.ts
+        sha256: e731eeee9a129a8b3feccf0baaf0ee7a34c68892cab9e1fd8c51fe7d91e0900a
+      - path: ../../src/deadline/types.ts
+        sha256: 8a9d4654b93e6d300c39b33b023b966dbc312a18d8e24fe924d7b9236e6f51f4
+      - path: ../../tests/unit/deadline/DeadlineController.test.ts
+        sha256: dd911891e35b707a94cb43f89132a3b3abba81a2d8bf689b63bda6f75c830e2d
+      - path: ../../tests/unit/deadline/DeadlineController.test-d.ts
+        sha256: 8a6bba713536ea65f5e41afcc7f297689b02963a0bec0539e62e0dbc18129836
+      - path: ../../package-lock.json
+        sha256: c792b0e82118536fe6e1629e480e47ba753634fd18f931b42a785b1af2b2e5aa
+      - path: ../../nix/checks/unit-js.nix
+        sha256: 16dab5ec94f05d266c449cf85fb22dc8535ef77d22f500c2b0ace556c6ce1988
+    observations:
+      - case: CASE-CONTROLLER-CAPABILITIES
+        tests:
+          - is a native cancellation controller with a stable signal
+          - deadline controllers preserve native authority and typed monitoring
+      - case: CASE-CONTROLLER-FANOUT
+        tests:
+          - 'CASE-CONTROLLER-FANOUT: shared negotiation budget permits loser cancellation and explicit winner handoff'
+      - case: CASE-CONTROLLER-BOUNDS
+        tests:
+          - validates constraints and clock identity before linking
+      - case: CASE-CONTROLLER-EXPIRY
+        tests:
+          - captures one shared fixed budget and requests rather than completing work
+          - rechecks early wakeups without restarting the bound
+          - synthetic abort events do not stop deadline monitoring
+      - case: CASE-CONTROLLER-LINKS
+        tests:
+          - pre-aborted upstream wins over an expired deadline
+          - dynamic links are directional, independently detachable and retain exact reasons
+      - case: CASE-CONTROLLER-RELEASE
+        tests:
+          - close stops enforcement without aborting, permits local abort and rejects links
+          - failed scheduler removal is logically invalidated and retryable
+          - failed unlink is retryable and upstream cannot forward after close begins
+      - case: CASE-CONTROLLER-MONITOR
+        tests:
+          - monitor failures retain identity and request cancellation
+          - scheduler replacement failures request cancellation and remain observable
+          - reentrant close retains a later monitor failure and invalidates scheduling
+          - abort cleanup failure is observed separately and remains retryable
+    limits:
+      - These are bounded observations, not complete requirement-level conformance assessments.
+      - Fan-out models negotiation but does not exercise real ICE or a downstream lifecycle consumer.
+      - Controller reuse by scopes or facades is not claimed; their separate owners remain.
+      - Publication and compatibility review remain separate.
