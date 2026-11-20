@@ -192,6 +192,11 @@ not preserved generally. For generators with explicitly typed input values,
 declare the generator function separately before adapting it; inline expressions
 can exceed TypeScript's inference for these context checks.
 
+Projection retains hidden own data descriptors, including symbols, while
+enumerable fields retain spread-style flags. Accessors and nonordinary
+prototypes are rejected. Preserving a capability reference does not itself grant
+or extend the provider's admission.
+
 ### Fixed deadlines and relative budgets
 
 `constrainDeadline` and `createDeadlineConstraintScope` intersect finite

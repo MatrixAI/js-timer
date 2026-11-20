@@ -1,6 +1,7 @@
 import type { ContextDeadlineConstraint } from '@matrixai/contexts';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { LifecycleGate } from '@matrixai/async-init/lifecycle/index.js';
 import { errors, timerClock } from '#index.js';
 import { timed, timedCancellable } from '#functions/index.js';
 import {
@@ -28,6 +29,158 @@ afterEach(() => {
 });
 
 describe('named timing authoring forms', () => {
+  test('timing protocols retain active lifecycle admission and do not revive stale tokens', async () => {
+    const gate = new LifecycleGate();
+    const original = { trace: 'lifecycle' };
+    const projected: Request[] = [];
+    function inspect(context: Request): string {
+      expect(gate.currentAccess(context)).toBe('reader');
+      projected.push(context);
+      return context.trace;
+    }
+    function* generator(context: Request): Generator<string, void, unknown> {
+      yield inspect(context);
+    }
+    async function* asyncGenerator(
+      context: Request,
+    ): AsyncGenerator<string, void, unknown> {
+      yield inspect(context);
+    }
+    const options = { context: 0 as const, duration: 5000 };
+    class Service {
+      @cancellableMethod(options)
+      async run(context: Request) {
+        return inspect(context);
+      }
+    }
+    await gate.runReader(async (admitted) => {
+      const context = admitted as Request;
+      expect(timed(inspect, { ...options, kind: 'sync' })(context)).toBe(
+        'lifecycle',
+      );
+      await expect(
+        timed(async (value: Request) => inspect(value), {
+          ...options,
+          kind: 'async',
+        })(context),
+      ).resolves.toBe('lifecycle');
+      expect([
+        ...timed(generator, { ...options, kind: 'generator' })(context),
+      ]).toEqual(['lifecycle']);
+      const values: string[] = [];
+      for await (const value of timed(asyncGenerator, {
+        ...options,
+        kind: 'async-generator',
+      })(context)) {
+        values.push(value);
+      }
+      expect(values).toEqual(['lifecycle']);
+      await expect(
+        timedCancellable(
+          async (value: Request) => inspect(value),
+          options,
+        )(context),
+      ).resolves.toBe('lifecycle');
+      await expect(new Service().run(context)).resolves.toBe('lifecycle');
+    }, original);
+    expect(projected).toHaveLength(6);
+    await gate.runWriter((admitted) => {
+      expect(gate.currentAccess(admitted)).toBe('writer');
+      for (const stale of projected) {
+        expect(gate.currentAccess(stale)).toBeUndefined();
+        expect(gate.tryRunReaderSync(() => 'bypassed', stale)).toBeUndefined();
+      }
+    }, original);
+  });
+
+  test('all timing protocols and methods preserve hidden admission data', async () => {
+    const admission = Symbol('admission');
+    const token = {};
+    const parent = new AbortController();
+    const clock = { now: () => 10 };
+    const context = Object.create(null) as Request;
+    Object.defineProperties(context, {
+      trace: { value: 'trace', enumerable: true },
+      signal: { value: parent.signal, enumerable: false },
+      deadline: { value: { clock, at: 30 }, enumerable: false },
+      [admission]: { value: token, enumerable: false },
+      hidden: { value: token, enumerable: false },
+    });
+    function inspect(inner: Request): string {
+      expect(inner.signal).not.toBe(parent.signal);
+      expect(inner.deadline?.at).toBe(30);
+      expect(Object.getOwnPropertyDescriptor(inner, admission)).toEqual(
+        Object.getOwnPropertyDescriptor(context, admission),
+      );
+      expect(Object.getOwnPropertyDescriptor(inner, 'hidden')).toEqual(
+        Object.getOwnPropertyDescriptor(context, 'hidden'),
+      );
+      return inner.trace;
+    }
+    function* generator(inner: Request) {
+      yield inspect(inner);
+    }
+    async function* asyncGenerator(inner: Request) {
+      yield inspect(inner);
+    }
+    const options = { context: 0 as const, duration: 50, clock };
+    expect(timed(inspect, { ...options, kind: 'sync' })(context)).toBe('trace');
+    await expect(
+      timed(async (inner: Request) => inspect(inner), {
+        ...options,
+        kind: 'async',
+      })(context),
+    ).resolves.toBe('trace');
+    expect([
+      ...timed(generator, { ...options, kind: 'generator' })(context),
+    ]).toEqual(['trace']);
+    const values: string[] = [];
+    for await (const value of timed(asyncGenerator, {
+      ...options,
+      kind: 'async-generator',
+    })(context)) {
+      values.push(value);
+    }
+    expect(values).toEqual(['trace']);
+    await expect(
+      timedCancellable(
+        async (inner: Request) => inspect(inner),
+        options,
+      )(context),
+    ).resolves.toBe('trace');
+    class Service {
+      @timedMethod({ ...options, kind: 'sync' })
+      sync(inner: Request) {
+        return inspect(inner);
+      }
+
+      @timedMethod({ ...options, kind: 'generator' })
+      *generator(inner: Request) {
+        yield inspect(inner);
+      }
+
+      @timedMethod({ ...options, kind: 'async-generator' })
+      async *asyncGenerator(inner: Request) {
+        yield inspect(inner);
+      }
+
+      @cancellableMethod(options)
+      async cancellable(inner: Request) {
+        return inspect(inner);
+      }
+    }
+    const service = new Service();
+    expect(service.sync(context)).toBe('trace');
+    expect([...service.generator(context)]).toEqual(['trace']);
+    const methodValues: string[] = [];
+    for await (const value of service.asyncGenerator(context)) {
+      methodValues.push(value);
+    }
+    expect(methodValues).toEqual(['trace']);
+    await expect(service.cancellable(context)).resolves.toBe('trace');
+    expect(parent.signal.aborted).toBe(false);
+  });
+
   test('async function and standard method preserve receiver, context, and inherited bounds', async () => {
     const clock = { now: () => 10 };
     const seen: Request[] = [];

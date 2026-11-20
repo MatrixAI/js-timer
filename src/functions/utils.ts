@@ -262,9 +262,7 @@ function releaseGeneratorTiming(
 }
 
 /** Snapshot supported context data before acquiring any parent link. */
-function snapshotContext(
-  value: unknown,
-): DeadlineInput & Record<PropertyKey, unknown> {
+function snapshotContext(value: unknown): Map<PropertyKey, PropertyDescriptor> {
   if (
     value == null ||
     typeof value !== 'object' ||
@@ -275,15 +273,47 @@ function snapshotContext(
       'ContextScope projection requires an ordinary data record',
     );
   }
+  const descriptors = new Map<PropertyKey, PropertyDescriptor>();
   for (const key of Reflect.ownKeys(value)) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
-    if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
-      throw new TypeError(
-        'ContextScope projection requires enumerable own data fields',
-      );
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor == null || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError('ContextScope projection requires own data fields');
     }
+    descriptors.set(key, descriptor);
   }
-  return { ...value };
+  return descriptors;
+}
+
+/** Project the selected data and replace each supplied capability only once. */
+function projectContext(
+  snapshot: Map<PropertyKey, PropertyDescriptor>,
+  supplied: DeadlineInput,
+): object {
+  const descriptors = new Map(snapshot);
+  for (const [key, value] of Object.entries(supplied)) {
+    descriptors.set(key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  const projected = {};
+  for (const [key, descriptor] of descriptors) {
+    Object.defineProperty(
+      projected,
+      key,
+      descriptor.enumerable
+        ? {
+            value: descriptor.value,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          }
+        : descriptor,
+    );
+  }
+  return projected;
 }
 
 function acquireTiming<
@@ -297,7 +327,7 @@ function acquireTiming<
   index: number,
   options: TimingOptions<Position, This, Args, Kind>,
 ): { owner: SynchronousDeadlineOwner; args: Args } {
-  const outer = snapshotContext(args[index]);
+  const snapshot = snapshotContext(args[index]);
   const duration =
     typeof options.duration === 'function'
       ? options.duration.apply(receiver, args)
@@ -308,12 +338,31 @@ function acquireTiming<
   const clock = options.clock ?? timerClock;
   const deadline = constrainDeadline(
     { clock, at: readClock(clock) + duration },
-    outer.deadline,
+    snapshot.get('deadline')?.value as DeadlineInput['deadline'],
   );
-  const owner = new SynchronousDeadlineOwner(deadline, outer.signal);
-  const forwarded: unknown[] = [...args];
-  forwarded[index] = { ...outer, deadline, signal: owner.signal };
-  return { owner, args: forwarded as Args };
+  const owner = new SynchronousDeadlineOwner(
+    deadline,
+    snapshot.get('signal')?.value as DeadlineInput['signal'],
+  );
+  try {
+    const forwarded: unknown[] = [...args];
+    forwarded[index] = projectContext(snapshot, {
+      deadline,
+      signal: owner.signal,
+    });
+    return { owner, args: forwarded as Args };
+  } catch (failure) {
+    try {
+      owner.close();
+    } catch (cleanup) {
+      throw new SuppressedError(
+        cleanup,
+        failure,
+        'Timing setup and cleanup failed',
+      );
+    }
+    throw failure;
+  }
 }
 
 /** Local cancellation requests retain the timed body's actual completion. */
@@ -335,12 +384,18 @@ function timedCancellable<
       throw new RangeError('The selected context argument is missing');
     }
     const snapshot = snapshotContext(args[index]);
-    const controller = new CancellationController(snapshot.signal);
-    const forwarded: unknown[] = [...args];
-    forwarded[index] = { ...snapshot, signal: controller.signal };
+    const controller = new CancellationController(
+      snapshot.get('signal')?.value as DeadlineInput['signal'],
+    );
     const completion = bracketResource(
       () => controller,
-      () => timedOperation.apply(this, forwarded as Args),
+      () => {
+        const forwarded: unknown[] = [...args];
+        forwarded[index] = projectContext(snapshot, {
+          signal: controller.signal,
+        });
+        return timedOperation.apply(this, forwarded as Args);
+      },
       (owned) => owned.close(),
     );
     return PromiseCancellable.from(completion, {
