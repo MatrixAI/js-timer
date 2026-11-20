@@ -1,6 +1,6 @@
 {
   "name": "@matrixai/timer",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "author": "Roger Qiu",
   "description": "Stopwatch timer object",
   "keywords": [
@@ -47,7 +47,7 @@
     "lintfix": "matrixai-lint --fix"
   },
   "dependencies": {
-    "@matrixai/async-cancellable": "git+ssh://git@github.com/MatrixAI/js-async-cancellable.git#v4.1.1",
+    "@matrixai/async-cancellable": "git+ssh://git@github.com/MatrixAI/js-async-cancellable.git#v4.2.0",
     "@matrixai/contexts": "git+ssh://git@github.com/MatrixAI/js-contexts.git#v4.1.0",
     "@matrixai/errors": "git+ssh://git@github.com/MatrixAI/js-errors.git#v3.0.3"
   },
