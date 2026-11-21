@@ -3,40 +3,27 @@
   nodejs,
   lint,
   system,
-  gitignore,
-  npmDependencies,
-  libraryBuild,
-  installedDependencies,
-  setupDependencies,
+  npmLibrary,
 }:
 let
-  src = gitignore.gitignoreSource ../..;
   runtimeInputs = {
-    inherit
-      pkgs
-      nodejs
-      system
-      src
-      setupDependencies
-      ;
+    inherit pkgs nodejs system;
+    src = npmLibrary.src;
+    setupDependencies = npmLibrary.setupDependencies;
   };
-  browserBundle = import ./browser/bundle.nix (runtimeInputs // { inherit libraryBuild; });
+  browserBundle = import ./browser/bundle.nix (runtimeInputs // { npmBuild = npmLibrary.npmBuild; });
   integration-browser = import ./browser (runtimeInputs // { inherit browserBundle; });
   unit-js = import ./unit-js.nix {
-    inherit
-      pkgs
-      nodejs
-      system
-      src
-      setupDependencies
-      installedDependencies
-      libraryBuild
-      ;
+    inherit pkgs nodejs system;
+    src = npmLibrary.src;
+    setupDependencies = npmLibrary.setupDependencies;
+    installedDependencies = npmLibrary.installedDependencies;
+    npmBuild = npmLibrary.npmBuild;
   };
   lintCheck = lint.mkCheck {
-    inherit src;
+    src = npmLibrary.src;
     name = "timer-lint";
-    npmDependencies = npmDependencies // {
+    npmDependencies = npmLibrary.npmDependencies // {
       inherit nodejs;
     };
   };

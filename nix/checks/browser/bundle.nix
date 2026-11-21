@@ -2,7 +2,7 @@
   pkgs,
   nodejs,
   src,
-  libraryBuild,
+  npmBuild,
   setupDependencies,
   ...
 }:
@@ -34,7 +34,7 @@ pkgs.stdenv.mkDerivation {
   buildPhase = ''
     runHook preBuild
     ${setupDependencies}
-    cp -R ${libraryBuild}/dist dist
+    cp -R ${npmBuild}/dist dist
     bash ${./bundle.sh}
     runHook postBuild
   '';

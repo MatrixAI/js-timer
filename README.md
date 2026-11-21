@@ -316,6 +316,11 @@ overrides. Activation does not install dependencies, load credentials, or change
 persistent shell options. Once activated, install dependencies explicitly and
 run project commands directly.
 
+The shell watches both the manifest and lockfile. After refreshing a lockfile,
+reload the shell before installing so the prepared-source plan reflects the new
+commit selections. The root contexts override also selects that version for
+transitive dependencies that declare an older Git tag.
+
 ```sh
 git submodule update --init --depth 1
 nix run './.matrixai/matrixai-standards#skills-materializer' -- --standards-root ./.matrixai/matrixai-standards
@@ -377,6 +382,9 @@ dependencies do not become timer dependencies. Timer remains both a consumer of
 prepared archives and a producer of its own archive, with no bundled dependency
 tree.
 
+The package build excludes the test-only async-init dependency from its build
+projection. Development installs and checks continue to use the full lockfile.
+
 The npm lock, not distribution metadata, owns the transitive dependency graph.
 Select each required Git-backed dependency at its concrete locked module path;
 nested copies may select different revisions. The shared installer and sandbox
@@ -397,9 +405,10 @@ retain `report.json` and artifacts.
 The independent browser check runs TypeScript Playwright cases in a Chromium
 document and dedicated worker against a browser-targeted bundle of the built
 timer. It exercises the browser performance clock and host scheduling. Nix
-reuses installed test dependencies and the compiled distribution across the
-package, unit check, and separately cached browser bundle. Normal tests do not
-start a browser. These cases do not establish compatibility with every browser.
+reuses the compiled distribution across the package, unit check, and separately
+cached browser bundle. Checks use the full installed test dependencies. Normal
+tests do not start a browser. These cases do not establish compatibility with
+every browser.
 
 The browser check sidecars use a shared library convention: the package build
 emits `dist/index.js`, esbuild bundles it as an ES module using the effective
