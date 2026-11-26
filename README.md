@@ -275,6 +275,8 @@ wall-clock fallback for missing, incomplete, restricted, non-finite, or
 out-of-range clocks. Construction, remaining-time reads, and reset/refresh all
 use the same internal clock. There are no Node builtin imports in timer source,
 no asynchronous clock initialization, and no separate runtime-specific builds.
+An invalid wall-clock result raises `RangeError`; a thrown wall-clock failure
+propagates without advancing the internal clock state.
 
 Timestamps and deadlines are epoch milliseconds, not raw relative performance
 readings. Clock readings are weakly nondecreasing within one loaded clock module

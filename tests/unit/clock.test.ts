@@ -28,6 +28,26 @@ afterEach(() => {
 });
 
 describe('portable timer clock', () => {
+  test('falls back from a nonnumeric performance reading', async () => {
+    const { readEpochMilliseconds } = await import('#clock.js');
+    setPerformance({ timeOrigin: 1000, now: () => null });
+    vi.spyOn(Date, 'now').mockReturnValue(2000);
+    expect(readEpochMilliseconds()).toBe(2000);
+  });
+
+  test('invalid fallback readings fail without poisoning the timer clock', async () => {
+    const { timestampNow } = await import('#utils.js');
+    setPerformance(undefined);
+    const wall = vi.spyOn(Date, 'now').mockReturnValue(2000);
+    expect(timestampNow()).toBe(2000);
+    wall.mockReturnValue(NaN);
+    expect(() => timestampNow()).toThrow(RangeError);
+    wall.mockReturnValue(1900);
+    expect(timestampNow()).toBe(2000);
+    wall.mockReturnValue(2100);
+    expect(timestampNow()).toBe(2100);
+  });
+
   test('shares one monotonic clock between direct timers and deadline scopes', async () => {
     let current = 2000;
     setPerformance({ timeOrigin: 0, now: () => current });

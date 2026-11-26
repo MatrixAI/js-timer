@@ -6,6 +6,7 @@ import type {
   ContextTransform,
 } from '@matrixai/contexts';
 import { scopeContextFunction, scopeContextMethod } from '@matrixai/contexts';
+import { readEpochMilliseconds } from './clock.js';
 
 type Incompatible<Context, Provided> = Context extends unknown
   ? {
@@ -48,23 +49,7 @@ function earlierDeadline(parent: number, next: number): number {
 const timestampNow = (() => {
   let lastTimestamp = -Infinity;
   return (): number => {
-    let timestamp: number | undefined;
-    try {
-      const performance = globalThis.performance;
-      if (
-        performance != null &&
-        typeof performance.timeOrigin === 'number' &&
-        typeof performance.now === 'function'
-      ) {
-        const candidate = performance.timeOrigin + performance.now();
-        if (Number.isFinite(candidate) && Math.abs(candidate) <= 8.64e15) {
-          timestamp = candidate;
-        }
-      }
-    } catch {
-      // Restricted hosts may expose throwing getters or an unusable clock.
-    }
-    timestamp ??= Date.now();
+    const timestamp = readEpochMilliseconds();
     lastTimestamp = monotonicTimestamp(lastTimestamp, timestamp);
     return lastTimestamp;
   };
