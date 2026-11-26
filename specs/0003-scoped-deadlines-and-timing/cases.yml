@@ -1,0 +1,39 @@
+version: 1
+role: planned-case-inventory
+normative_source: adr.md
+execution_status: not-run
+cases:
+  - id: CASE-DEADLINE-CAPTURE
+    intent: Mutate inputs after construction and assert captured bounds without scheduling or clock reads.
+  - id: CASE-DEADLINE-CLOCKS
+    intent: Distinguish matching and incompatible clock identities and invalid readings.
+  - id: CASE-DEADLINE-LAWS
+    intent: Check fixed same-clock minimum laws without extending them to mutable or relative timers.
+  - id: CASE-DEADLINE-BUDGET
+    intent: Compare total retry budgets and per-attempt budgets under an inherited bound.
+  - id: CASE-DEADLINE-EXPIRED
+    intent: Enter an expired inherited constraint and confirm it is not restarted.
+  - id: CASE-DEADLINE-WAKEUP
+    intent: Inject early and long-range scheduler wakeups and controlled clock movement.
+  - id: CASE-TIMER-SCOPE-DRAIN
+    intent: Hold a running owned handler after body settlement and assert scope release waits.
+  - id: CASE-TIMER-SCOPE-BORROWED
+    intent: Verify body or waiter completion does not mutate or release a borrowed timer.
+  - id: CASE-DEADLINE-ENTRY
+    intent: Exercise pre-aborted and expired entry, child signal identity, and one-way parent propagation.
+  - id: CASE-DEADLINE-DRAIN
+    intent: Request expiry while body work is gated; assert owned links and resources remain live.
+  - id: CASE-DEADLINE-SETUP
+    intent: Fail clock, scheduler, listener setup and cleanup at controlled acquisition boundaries.
+  - id: CASE-TIMER-SCOPE-FAILURE
+    intent: Preserve distinct body, handler, monitor and cleanup failures and their roles.
+  - id: CASE-TIMER-CONTEXT-TYPES
+    intent: Check structural composition, unrelated requirements, unions and refined-capability rejection.
+  - id: CASE-TIMER-SCOPE-ORDER
+    intent: Observe scope order, identity and release traces across overlapping invocations.
+  - id: CASE-TIMER-FACADE-PARITY
+    intent: Compare functional and standard method forms for selection, receiver, failures and completion.
+  - id: CASE-TIMER-FACADE-TYPES
+    intent: Check supported and rejected context selectors and operation signatures.
+  - id: CASE-TIMER-FACADE-PACKED
+    intent: Compile a separate installed-package consumer against emitted facade declarations.

@@ -1,0 +1,47 @@
+version: 1
+role: non-normative-requirement-index
+normative_source: adr.md
+decision_status: accepted
+assessment_status: pending
+case_registries: [cases.yml]
+requirements:
+  - id: REQ-TIMER-OBJECT-001
+    spec: adr.md#REQ-TIMER-OBJECT-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-COMPLETION, CASE-TIMER-DETACHED]
+  - id: REQ-TIMER-SCHEDULE-001
+    spec: adr.md#REQ-TIMER-SCHEDULE-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-SCHEDULE-RACE, CASE-TIMER-SETUP-FAILURE]
+  - id: REQ-TIMER-CANCELLATION-001
+    spec: adr.md#REQ-TIMER-CANCELLATION-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-REQUEST-PHASES, CASE-TIMER-REASON]
+  - id: REQ-TIMER-LINK-001
+    spec: adr.md#REQ-TIMER-LINK-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-UPSTREAM, CASE-TIMER-LINK-FAILURE]
+  - id: REQ-TIMER-WAIT-001
+    spec: adr.md#REQ-TIMER-WAIT-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-WAIT, CASE-TIMER-LATE-FAILURE]
+  - id: REQ-TIMER-COMPLETION-001
+    spec: adr.md#REQ-TIMER-COMPLETION-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-COMPLETION, CASE-TIMER-LATE-FAILURE, CASE-TIMER-CLEANUP-FAILURE]
+  - id: REQ-TIMER-RESET-001
+    spec: adr.md#REQ-TIMER-RESET-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-RESET, CASE-TIMER-SCHEDULE-RACE]
+  - id: REQ-TIMER-PORTABILITY-001
+    spec: adr.md#REQ-TIMER-PORTABILITY-001
+    requirement_status: active
+    evidence_status: unevidenced
+    cases: [CASE-TIMER-RUNTIMES, CASE-TIMER-RESET]
